@@ -608,6 +608,57 @@
             }
         }
 
+        .polls-list {
+            margin-top: 30px;
+            text-align: left;
+        }
+
+        .polls-list h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .poll-item {
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .poll-item:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .poll-info {
+            flex: 1;
+        }
+
+        .poll-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .poll-meta {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .empty-polls {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+            font-style: italic;
+        }
+
         .version-footer {
             position: fixed;
             bottom: 10px;
@@ -669,6 +720,11 @@
             <p class="subtitle">Compare how options trade off against each other</p>
             <div class="button-group">
                 <button onclick="startAsOrganizer()">Create New Poll</button>
+            </div>
+
+            <div class="polls-list" id="pollsList">
+                <h3>Your Polls</h3>
+                <div id="pollsListContainer"></div>
             </div>
         </div>
 
@@ -875,6 +931,7 @@
         let currentParticipant = '';
         let options = [];
         let comparisons = [];
+        let drawnPairs = []; // Pairs that user marked as draws (equal)
         let pollId = '';
         let isOrganizer = false;
         let isAdmin = false;
@@ -952,9 +1009,72 @@
                 // Participant mode - load poll and show name entry
                 loadPoll(pollId);
             } else {
-                // Show welcome screen
+                // Show welcome screen and load polls list
                 showScreen('welcomeScreen');
+                loadPollsList();
             }
+        }
+
+        function loadPollsList() {
+            const pollsContainer = document.getElementById('pollsListContainer');
+            const polls = [];
+
+            // Get all polls from localStorage
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith('poll_')) {
+                    try {
+                        const pollData = JSON.parse(localStorage.getItem(key));
+                        const pollId = key.replace('poll_', '');
+                        polls.push({
+                            id: pollId,
+                            data: pollData
+                        });
+                    } catch (e) {
+                        // Skip invalid poll data
+                    }
+                }
+            }
+
+            if (polls.length === 0) {
+                pollsContainer.innerHTML = '<div class="empty-polls">No polls yet. Create one to get started!</div>';
+                return;
+            }
+
+            // Sort polls by most recent first (based on participants)
+            polls.sort((a, b) => {
+                const aTime = a.data.participants.length > 0 ?
+                    new Date(a.data.participants[a.data.participants.length - 1].timestamp || 0) :
+                    new Date(0);
+                const bTime = b.data.participants.length > 0 ?
+                    new Date(b.data.participants[b.data.participants.length - 1].timestamp || 0) :
+                    new Date(0);
+                return bTime - aTime;
+            });
+
+            // Build HTML for polls list
+            pollsContainer.innerHTML = polls.map(poll => {
+                const participantCount = poll.data.participants.length;
+                const optionCount = poll.data.options.length;
+                const firstOption = poll.data.options[0] || 'Untitled Poll';
+                const pollTitle = optionCount > 1 ?
+                    `${firstOption} and ${optionCount - 1} other${optionCount > 2 ? 's' : ''}` :
+                    firstOption;
+
+                return `
+                    <div class="poll-item" onclick="loadPollFromList('${poll.id}')">
+                        <div class="poll-info">
+                            <div class="poll-title">${pollTitle}</div>
+                            <div class="poll-meta">${participantCount} participant${participantCount !== 1 ? 's' : ''} • ${optionCount} option${optionCount !== 1 ? 's' : ''}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function loadPollFromList(selectedPollId) {
+            // Navigate to the poll URL
+            window.location.href = `${window.location.pathname}?poll=${selectedPollId}`;
         }
 
         function checkAdmin(pollId) {
@@ -1534,6 +1654,13 @@
                     );
                     if (alreadyCompared) continue;
 
+                    // Skip if marked as draw
+                    const markedAsDraw = drawnPairs.some(p =>
+                        (p[0] === i && p[1] === j) ||
+                        (p[0] === j && p[1] === i)
+                    );
+                    if (markedAsDraw) continue;
+
                     // Score = combined uncertainty * informativeness
                     // Higher uncertainty items are prioritized
                     const combinedUncertainty = (uncertainties[i] + uncertainties[j]) / 2;
@@ -1767,11 +1894,14 @@
         }
 
         function selectDraw() {
-            // Handle draw - skip this comparison and move to next
-            // Don't record any comparison since they're equal
+            // Handle draw - mark these options as equal and skip
             if (!currentDisplayedPair) return;
 
-            // Just move to the next pair without recording a comparison
+            // Record this pair as a draw so it won't be shown again
+            drawnPairs.push([currentDisplayedPair[0], currentDisplayedPair[1]]);
+            saveData();
+
+            // Move to the next pair without affecting rankings
             showNextPair();
         }
 
