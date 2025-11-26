@@ -199,6 +199,16 @@
             font-size: 0.9rem;
         }
 
+        .rank-multiplier {
+            color: #667eea;
+            font-weight: bold;
+            font-size: 0.85rem;
+            margin-left: 10px;
+            padding: 3px 8px;
+            background: #f0f4ff;
+            border-radius: 5px;
+        }
+
         .participant-toggle {
             display: flex;
             align-items: center;
@@ -245,6 +255,68 @@
             color: #764ba2;
         }
 
+        .share-link-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 2px dashed #667eea;
+        }
+
+        .share-link-box h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .share-link {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .share-link input {
+            flex: 1;
+            font-size: 0.9rem;
+        }
+
+        .confidence-meter {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .confidence-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ffc107 0%, #4caf50 100%);
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .confidence-message {
+            color: #666;
+            margin-top: 10px;
+        }
+
+        .finish-button {
+            margin-top: 15px;
+            background: #4caf50 !important;
+        }
+
         @media (max-width: 600px) {
             .container {
                 padding: 20px;
@@ -266,30 +338,66 @@
 </head>
 <body>
     <div class="container">
-        <!-- Screen 1: Welcome & Name Input -->
-        <div id="nameScreen" class="screen active">
+        <!-- Screen 1: Welcome -->
+        <div id="welcomeScreen" class="screen active">
             <h1>Rank by Pairs</h1>
             <p class="subtitle">Make decisions through pairwise comparisons</p>
-            <input type="text" id="nameInput" placeholder="Enter your name" />
-            <button onclick="startSetup()">Get Started</button>
-        </div>
-
-        <!-- Screen 2: Options Setup -->
-        <div id="setupScreen" class="screen">
-            <h1>Setup Options</h1>
-            <p class="subtitle">Enter the options you want to rank</p>
-            <textarea id="optionsInput" placeholder="Enter each option on a new line&#10;&#10;Example:&#10;Option A&#10;Option B&#10;Option C"></textarea>
-            <p class="help-text">Enter each option on a separate line</p>
             <div class="button-group">
-                <button class="secondary" onclick="goToNameScreen()">Back</button>
-                <button onclick="startComparisons()">Start Ranking</button>
+                <button onclick="startAsOrganizer()">Create New Poll</button>
             </div>
         </div>
 
-        <!-- Screen 3: Pairwise Comparisons -->
+        <!-- Screen 2: Options Setup (Organizer) -->
+        <div id="setupScreen" class="screen">
+            <h1>Setup Your Poll</h1>
+            <p class="subtitle">Enter the options you want people to rank</p>
+            <textarea id="optionsInput" placeholder="Enter each option on a new line&#10;&#10;Example:&#10;Project A&#10;Project B&#10;Project C"></textarea>
+            <p class="help-text">Enter each option on a separate line</p>
+            <div class="button-group">
+                <button class="secondary" onclick="goBack()">Back</button>
+                <button onclick="createPoll()">Create Poll</button>
+            </div>
+        </div>
+
+        <!-- Screen 3: Share Link (Organizer) -->
+        <div id="shareLinkScreen" class="screen">
+            <h1>Poll Created!</h1>
+            <p class="subtitle">Share this link with friends to get their rankings</p>
+            <div class="share-link-box">
+                <h3>Share this link:</h3>
+                <div class="share-link">
+                    <input type="text" id="shareLinkInput" readonly />
+                    <button onclick="copyShareLink()">Copy</button>
+                </div>
+            </div>
+            <div class="button-group">
+                <button onclick="viewResults()">View Results</button>
+                <button class="secondary" onclick="startAsOrganizer()">Create New Poll</button>
+            </div>
+        </div>
+
+        <!-- Screen 4: Participant Name Entry -->
+        <div id="nameScreen" class="screen">
+            <h1>Rank by Pairs</h1>
+            <p class="subtitle">Enter your name to get started</p>
+            <input type="text" id="nameInput" placeholder="Enter your name" />
+            <button onclick="startComparisons()">Start Ranking</button>
+        </div>
+
+        <!-- Screen 5: Pairwise Comparisons -->
         <div id="comparisonScreen" class="screen">
             <h1>Choose Your Preference</h1>
             <div class="progress" id="progressText"></div>
+
+            <div class="confidence-meter" id="confidenceMeter" style="display: none;">
+                <h3>Ranking Confidence</h3>
+                <div class="confidence-bar">
+                    <div class="confidence-fill" id="confidenceFill" style="width: 0%">0%</div>
+                </div>
+                <div class="confidence-message" id="confidenceMessage">Keep going to improve accuracy</div>
+                <button class="finish-button" id="finishButton" onclick="finishEarly()" style="display: none;">Finish Ranking</button>
+            </div>
+
             <div class="comparison-container">
                 <div class="option-card" onclick="selectOption(0)">
                     <h3 id="option1"></h3>
@@ -301,11 +409,17 @@
             <button class="secondary" onclick="skipComparison()">Skip This Pair</button>
         </div>
 
-        <!-- Screen 4: Individual Results -->
+        <!-- Screen 6: Thank You (Participant) -->
+        <div id="thankYouScreen" class="screen">
+            <h1>Thank You!</h1>
+            <p class="subtitle" id="thankYouName"></p>
+            <ol class="ranking-list" id="thankYouRanking"></ol>
+            <p class="help-text">Your rankings have been recorded. The organizer can view all results.</p>
+        </div>
+
+        <!-- Screen 7: Results View (Organizer) -->
         <div id="resultsScreen" class="screen">
-            <h1>Your Rankings</h1>
-            <p class="subtitle" id="participantName"></p>
-            <ol class="ranking-list" id="individualRanking"></ol>
+            <h1>Poll Results</h1>
 
             <div class="section">
                 <h2 class="section-title">Group Rankings</h2>
@@ -313,11 +427,23 @@
                 <ol class="ranking-list" id="groupRanking"></ol>
             </div>
 
+            <div class="section">
+                <h2 class="section-title">Individual Rankings</h2>
+                <div id="individualRankings"></div>
+            </div>
+
+            <div class="share-link-box">
+                <h3>Share link:</h3>
+                <div class="share-link">
+                    <input type="text" id="resultsShareLink" readonly />
+                    <button onclick="copyResultsLink()">Copy</button>
+                </div>
+            </div>
+
             <div class="button-group">
                 <button class="secondary" onclick="exportData()">Export Data</button>
-                <button onclick="addAnotherParticipant()">Add Another Participant</button>
+                <button onclick="startAsOrganizer()">Create New Poll</button>
             </div>
-            <span class="start-over" onclick="startOver()">Start Over</span>
         </div>
     </div>
 
@@ -328,29 +454,40 @@
         let comparisons = [];
         let currentPairIndex = 0;
         let pairs = [];
-        let allParticipants = JSON.parse(localStorage.getItem('participants')) || [];
+        let pollId = '';
+        let isOrganizer = false;
 
-        // Screen navigation
+        // Initialize from URL on load
+        window.addEventListener('DOMContentLoaded', initFromURL);
+
+        function initFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            pollId = params.get('poll');
+
+            if (pollId) {
+                // Participant mode - load poll and show name entry
+                loadPoll(pollId);
+            } else {
+                // Show welcome screen
+                showScreen('welcomeScreen');
+            }
+        }
+
         function showScreen(screenId) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(screenId).classList.add('active');
         }
 
-        function startSetup() {
-            const name = document.getElementById('nameInput').value.trim();
-            if (!name) {
-                alert('Please enter your name');
-                return;
-            }
-            currentParticipant = name;
+        function startAsOrganizer() {
+            isOrganizer = true;
             showScreen('setupScreen');
         }
 
-        function goToNameScreen() {
-            showScreen('nameScreen');
+        function goBack() {
+            showScreen('welcomeScreen');
         }
 
-        function startComparisons() {
+        function createPoll() {
             const optionsText = document.getElementById('optionsInput').value.trim();
             if (!optionsText) {
                 alert('Please enter at least 2 options');
@@ -364,6 +501,64 @@
             if (options.length < 2) {
                 alert('Please enter at least 2 options');
                 return;
+            }
+
+            // Generate unique poll ID
+            pollId = generatePollId();
+
+            // Save poll to localStorage
+            const pollData = {
+                id: pollId,
+                options: options,
+                created: new Date().toISOString(),
+                participants: []
+            };
+            localStorage.setItem(`poll_${pollId}`, JSON.stringify(pollData));
+
+            // Show share link
+            const shareUrl = `${window.location.origin}${window.location.pathname}?poll=${pollId}`;
+            document.getElementById('shareLinkInput').value = shareUrl;
+            showScreen('shareLinkScreen');
+        }
+
+        function generatePollId() {
+            return Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+        }
+
+        function copyShareLink() {
+            const input = document.getElementById('shareLinkInput');
+            input.select();
+            document.execCommand('copy');
+            alert('Link copied to clipboard!');
+        }
+
+        function copyResultsLink() {
+            const input = document.getElementById('resultsShareLink');
+            input.select();
+            document.execCommand('copy');
+            alert('Link copied to clipboard!');
+        }
+
+        function loadPoll(id) {
+            const pollData = JSON.parse(localStorage.getItem(`poll_${id}`));
+            if (!pollData) {
+                alert('Poll not found');
+                showScreen('welcomeScreen');
+                return;
+            }
+
+            options = pollData.options;
+            showScreen('nameScreen');
+        }
+
+        function startComparisons() {
+            if (!isOrganizer) {
+                const name = document.getElementById('nameInput').value.trim();
+                if (!name) {
+                    alert('Please enter your name');
+                    return;
+                }
+                currentParticipant = name;
             }
 
             // Generate all pairs
@@ -395,6 +590,44 @@
             document.getElementById('option2').textContent = options[idx2];
             document.getElementById('progressText').textContent =
                 `Comparison ${currentPairIndex + 1} of ${pairs.length}`;
+
+            updateConfidence();
+        }
+
+        function updateConfidence() {
+            const totalPairs = pairs.length;
+            const completed = comparisons.length;
+            const minRequired = Math.ceil(options.length * 1.5); // Minimum comparisons for decent confidence
+
+            if (completed === 0) return;
+
+            // Calculate confidence (0-100%)
+            let confidence = Math.min(100, (completed / totalPairs) * 100);
+
+            // Show confidence meter after a few comparisons
+            if (completed >= 3) {
+                document.getElementById('confidenceMeter').style.display = 'block';
+                document.getElementById('confidenceFill').style.width = confidence + '%';
+                document.getElementById('confidenceFill').textContent = Math.round(confidence) + '%';
+
+                // Update message based on confidence
+                let message = '';
+                if (confidence < 30) {
+                    message = 'Keep going to improve accuracy';
+                } else if (confidence < 60) {
+                    message = 'Good progress! More comparisons = better results';
+                } else if (confidence < 90) {
+                    message = 'Great! You can finish now or continue for maximum accuracy';
+                } else {
+                    message = 'Excellent! You\'ve completed all comparisons';
+                }
+                document.getElementById('confidenceMessage').textContent = message;
+
+                // Show finish button when confidence is reasonable
+                if (completed >= minRequired && confidence >= 40) {
+                    document.getElementById('finishButton').style.display = 'block';
+                }
+            }
         }
 
         function selectOption(choice) {
@@ -410,6 +643,39 @@
         function skipComparison() {
             currentPairIndex++;
             showNextPair();
+        }
+
+        function finishEarly() {
+            calculateResults();
+        }
+
+        function calculateRelativeMultipliers(rankings) {
+            // Calculate multipliers relative to the lowest ranked item
+            if (rankings.length === 0) return rankings;
+
+            const lowestRating = rankings[rankings.length - 1].rating;
+            const baselineRating = Math.max(lowestRating, 1); // Avoid division by zero
+
+            return rankings.map(item => {
+                const multiplier = item.rating / baselineRating;
+                let multiplierText = '';
+
+                if (multiplier >= 10) {
+                    multiplierText = `${Math.round(multiplier)}x`;
+                } else if (multiplier >= 5) {
+                    multiplierText = `${Math.round(multiplier)}x`;
+                } else if (multiplier >= 2) {
+                    multiplierText = `${multiplier.toFixed(1)}x`;
+                } else if (multiplier >= 1.5) {
+                    multiplierText = `${multiplier.toFixed(1)}x`;
+                }
+
+                return {
+                    ...item,
+                    multiplier: multiplier,
+                    multiplierText: multiplierText
+                };
+            });
         }
 
         function calculateResults() {
@@ -431,84 +697,113 @@
                 rating: Math.round(ratings[idx])
             })).sort((a, b) => b.rating - a.rating);
 
-            // Save participant data
+            // Save participant data to poll
+            const pollData = JSON.parse(localStorage.getItem(`poll_${pollId}`));
+
             const participantData = {
                 name: currentParticipant,
                 timestamp: new Date().toISOString(),
-                options: options,
                 comparisons: comparisons,
                 ranking: ranking,
                 enabled: true
             };
 
-            // Remove any existing data for this participant with same options
-            allParticipants = allParticipants.filter(p =>
-                p.name !== currentParticipant ||
-                JSON.stringify(p.options.sort()) !== JSON.stringify(options.sort())
-            );
+            // Remove existing submission from this participant
+            pollData.participants = pollData.participants.filter(p => p.name !== currentParticipant);
+            pollData.participants.push(participantData);
+            localStorage.setItem(`poll_${pollId}`, JSON.stringify(pollData));
 
-            allParticipants.push(participantData);
-            localStorage.setItem('participants', JSON.stringify(allParticipants));
-
-            showResults();
+            // Show thank you screen for participants
+            if (!isOrganizer) {
+                showThankYou(ranking);
+            } else {
+                viewResults();
+            }
         }
 
-        function showResults() {
-            // Find current participant's data
-            const currentData = allParticipants.find(p =>
-                p.name === currentParticipant &&
-                JSON.stringify(p.options.sort()) === JSON.stringify(options.sort())
-            );
-
-            // Show individual ranking
-            document.getElementById('participantName').textContent = `${currentParticipant}'s Rankings`;
-            const individualList = document.getElementById('individualRanking');
-            individualList.innerHTML = currentData.ranking.map((item, idx) => `
+        function showThankYou(ranking) {
+            document.getElementById('thankYouName').textContent = `Thanks, ${currentParticipant}!`;
+            const rankingWithMultipliers = calculateRelativeMultipliers(ranking);
+            const thankYouList = document.getElementById('thankYouRanking');
+            thankYouList.innerHTML = rankingWithMultipliers.map((item, idx) => `
                 <li class="ranking-item">
                     <span class="rank-number">${idx + 1}</span>
                     <span class="rank-name">${item.option}</span>
-                    <span class="rank-score">${item.rating}</span>
+                    <span class="rank-score">
+                        ${item.rating}
+                        ${item.multiplierText ? `<span class="rank-multiplier">${item.multiplierText}</span>` : ''}
+                    </span>
                 </li>
             `).join('');
+            showScreen('thankYouScreen');
+        }
+
+        function viewResults() {
+            const pollData = JSON.parse(localStorage.getItem(`poll_${pollId}`));
+            if (!pollData) {
+                alert('Poll not found');
+                return;
+            }
+
+            options = pollData.options;
 
             // Show participant toggles
-            const relevantParticipants = allParticipants.filter(p =>
-                JSON.stringify(p.options.sort()) === JSON.stringify(options.sort())
-            );
-
             const togglesDiv = document.getElementById('participantToggles');
-            togglesDiv.innerHTML = relevantParticipants.map((p, idx) => `
+            togglesDiv.innerHTML = pollData.participants.map((p, idx) => `
                 <div class="participant-toggle">
                     <input type="checkbox" id="participant-${idx}"
                            ${p.enabled ? 'checked' : ''}
                            onchange="toggleParticipant('${p.name}')">
-                    <label for="participant-${idx}">${p.name}</label>
+                    <label for="participant-${idx}">${p.name} (${new Date(p.timestamp).toLocaleDateString()})</label>
                 </div>
             `).join('');
+
+            // Show individual rankings
+            const individualDiv = document.getElementById('individualRankings');
+            individualDiv.innerHTML = pollData.participants.map(p => {
+                const rankingWithMultipliers = calculateRelativeMultipliers(p.ranking);
+                return `
+                    <div class="section">
+                        <h3>${p.name}'s Rankings</h3>
+                        <ol class="ranking-list">
+                            ${rankingWithMultipliers.map((item, idx) => `
+                                <li class="ranking-item">
+                                    <span class="rank-number">${idx + 1}</span>
+                                    <span class="rank-name">${item.option}</span>
+                                    <span class="rank-score">
+                                        ${item.rating}
+                                        ${item.multiplierText ? `<span class="rank-multiplier">${item.multiplierText}</span>` : ''}
+                                    </span>
+                                </li>
+                            `).join('')}
+                        </ol>
+                    </div>
+                `;
+            }).join('');
+
+            // Show share link
+            const shareUrl = `${window.location.origin}${window.location.pathname}?poll=${pollId}`;
+            document.getElementById('resultsShareLink').value = shareUrl;
 
             updateGroupRanking();
             showScreen('resultsScreen');
         }
 
         function toggleParticipant(name) {
-            const participant = allParticipants.find(p =>
-                p.name === name &&
-                JSON.stringify(p.options.sort()) === JSON.stringify(options.sort())
-            );
+            const pollData = JSON.parse(localStorage.getItem(`poll_${pollId}`));
+            const participant = pollData.participants.find(p => p.name === name);
             if (participant) {
                 participant.enabled = !participant.enabled;
-                localStorage.setItem('participants', JSON.stringify(allParticipants));
+                localStorage.setItem(`poll_${pollId}`, JSON.stringify(pollData));
                 updateGroupRanking();
             }
         }
 
         function updateGroupRanking() {
-            const relevantParticipants = allParticipants.filter(p =>
-                JSON.stringify(p.options.sort()) === JSON.stringify(options.sort()) &&
-                p.enabled
-            );
+            const pollData = JSON.parse(localStorage.getItem(`poll_${pollId}`));
+            const enabledParticipants = pollData.participants.filter(p => p.enabled);
 
-            if (relevantParticipants.length === 0) {
+            if (enabledParticipants.length === 0) {
                 document.getElementById('groupRanking').innerHTML =
                     '<li style="text-align: center; color: #888;">No participants selected</li>';
                 return;
@@ -520,7 +815,7 @@
                 aggregateRatings[option] = 0;
             });
 
-            relevantParticipants.forEach(p => {
+            enabledParticipants.forEach(p => {
                 p.ranking.forEach(item => {
                     aggregateRatings[item.option] += item.rating;
                 });
@@ -529,51 +824,35 @@
             const groupRanking = Object.entries(aggregateRatings)
                 .map(([option, totalRating]) => ({
                     option,
-                    avgRating: Math.round(totalRating / relevantParticipants.length)
+                    rating: Math.round(totalRating / enabledParticipants.length)
                 }))
-                .sort((a, b) => b.avgRating - a.avgRating);
+                .sort((a, b) => b.rating - a.rating);
+
+            const groupRankingWithMultipliers = calculateRelativeMultipliers(groupRanking);
 
             const groupList = document.getElementById('groupRanking');
-            groupList.innerHTML = groupRanking.map((item, idx) => `
+            groupList.innerHTML = groupRankingWithMultipliers.map((item, idx) => `
                 <li class="ranking-item">
                     <span class="rank-number">${idx + 1}</span>
                     <span class="rank-name">${item.option}</span>
-                    <span class="rank-score">Avg: ${item.avgRating}</span>
+                    <span class="rank-score">
+                        Avg: ${item.rating} (${enabledParticipants.length} ${enabledParticipants.length === 1 ? 'person' : 'people'})
+                        ${item.multiplierText ? `<span class="rank-multiplier">${item.multiplierText}</span>` : ''}
+                    </span>
                 </li>
             `).join('');
         }
 
-        function addAnotherParticipant() {
-            document.getElementById('nameInput').value = '';
-            document.getElementById('optionsInput').value = options.join('\n');
-            currentParticipant = '';
-            showScreen('nameScreen');
-        }
-
         function exportData() {
-            const relevantParticipants = allParticipants.filter(p =>
-                JSON.stringify(p.options.sort()) === JSON.stringify(options.sort())
-            );
-
-            const dataStr = JSON.stringify(relevantParticipants, null, 2);
+            const pollData = JSON.parse(localStorage.getItem(`poll_${pollId}`));
+            const dataStr = JSON.stringify(pollData, null, 2);
             const dataBlob = new Blob([dataStr], { type: 'application/json' });
             const url = URL.createObjectURL(dataBlob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = 'rankings-export.json';
+            link.download = `poll-${pollId}-export.json`;
             link.click();
             URL.revokeObjectURL(url);
-        }
-
-        function startOver() {
-            if (confirm('This will clear all data and start fresh. Continue?')) {
-                localStorage.removeItem('participants');
-                allParticipants = [];
-                document.getElementById('nameInput').value = '';
-                document.getElementById('optionsInput').value = '';
-                currentParticipant = '';
-                showScreen('nameScreen');
-            }
         }
     </script>
 </body>
