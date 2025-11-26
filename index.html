@@ -348,47 +348,63 @@
         }
 
         .tier-selection {
+            display: flex;
+            gap: 15px;
             margin: 20px 0;
+            flex-wrap: wrap;
         }
 
-        .tier-item {
-            display: flex;
-            align-items: center;
-            padding: 15px;
-            margin-bottom: 10px;
+        .tier-column {
+            flex: 1;
+            min-width: 150px;
             background: #f8f9fa;
             border-radius: 10px;
-            border-left: 4px solid #667eea;
+            padding: 10px;
+            min-height: 200px;
         }
 
-        .tier-item-name {
-            flex: 1;
-            font-size: 1.1rem;
-            color: #333;
-        }
-
-        .tier-select {
-            padding: 8px 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 1rem;
-            background: white;
-            cursor: pointer;
+        .tier-header {
+            text-align: center;
             font-weight: bold;
-            transition: all 0.3s;
+            font-size: 1.2rem;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            color: white;
         }
 
-        .tier-select:hover {
+        .tier-items {
+            min-height: 150px;
+            padding: 5px;
+        }
+
+        .draggable-item {
+            padding: 12px;
+            margin-bottom: 8px;
+            background: white;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+            cursor: move;
+            transition: all 0.2s;
+            user-select: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .draggable-item:hover {
             border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
         }
 
-        .tier-select.tier-S { color: #ff4444; }
-        .tier-select.tier-A { color: #ff8800; }
-        .tier-select.tier-B { color: #ffbb00; }
-        .tier-select.tier-C { color: #00cc00; }
-        .tier-select.tier-D { color: #0088cc; }
-        .tier-select.tier-E { color: #6600cc; }
-        .tier-select.tier-F { color: #999999; }
+        .draggable-item.dragging {
+            opacity: 0.5;
+            transform: rotate(5deg);
+        }
+
+        .tier-column.drag-over {
+            background: #e8f4ff;
+            border: 2px dashed #667eea;
+        }
 
         .tier-badge {
             display: inline-block;
@@ -422,6 +438,14 @@
 
             .comparison-container {
                 flex-direction: column;
+            }
+
+            .tier-selection {
+                flex-direction: column;
+            }
+
+            .tier-column {
+                min-width: 100%;
             }
         }
     </style>
@@ -480,8 +504,37 @@
         <!-- Screen 5: Tier Selection -->
         <div id="tierScreen" class="screen">
             <h1>Assign Tiers</h1>
-            <p class="subtitle">Group options into tiers (S is best, F is worst)</p>
-            <div class="tier-selection" id="tierSelection"></div>
+            <p class="subtitle">Drag options into tiers (S is best, F is worst)</p>
+            <div class="tier-selection" id="tierSelection">
+                <div class="tier-column" data-tier="S">
+                    <div class="tier-header tier-S">S</div>
+                    <div class="tier-items" id="tier-items-S"></div>
+                </div>
+                <div class="tier-column" data-tier="A">
+                    <div class="tier-header tier-A">A</div>
+                    <div class="tier-items" id="tier-items-A"></div>
+                </div>
+                <div class="tier-column" data-tier="B">
+                    <div class="tier-header tier-B">B</div>
+                    <div class="tier-items" id="tier-items-B"></div>
+                </div>
+                <div class="tier-column" data-tier="C">
+                    <div class="tier-header tier-C">C</div>
+                    <div class="tier-items" id="tier-items-C"></div>
+                </div>
+                <div class="tier-column" data-tier="D">
+                    <div class="tier-header tier-D">D</div>
+                    <div class="tier-items" id="tier-items-D"></div>
+                </div>
+                <div class="tier-column" data-tier="E">
+                    <div class="tier-header tier-E">E</div>
+                    <div class="tier-items" id="tier-items-E"></div>
+                </div>
+                <div class="tier-column" data-tier="F">
+                    <div class="tier-header tier-F">F</div>
+                    <div class="tier-items" id="tier-items-F"></div>
+                </div>
+            </div>
             <div class="button-group">
                 <button class="secondary" onclick="goBackToName()">Back</button>
                 <button onclick="startComparisons()">Continue to Comparisons</button>
@@ -702,30 +755,69 @@
                 tiers[idx] = 'C';
             });
 
-            // Show tier selection screen
-            const tierSelection = document.getElementById('tierSelection');
-            tierSelection.innerHTML = options.map((option, idx) => `
-                <div class="tier-item">
-                    <span class="tier-item-name">${option}</span>
-                    <select class="tier-select tier-C" id="tier-${idx}" onchange="updateTier(${idx}, this.value)">
-                        <option value="S">S</option>
-                        <option value="A">A</option>
-                        <option value="B">B</option>
-                        <option value="C" selected>C</option>
-                        <option value="D">D</option>
-                        <option value="E">E</option>
-                        <option value="F">F</option>
-                    </select>
+            // Populate C tier with all items initially
+            const cTierContainer = document.getElementById('tier-items-C');
+            cTierContainer.innerHTML = options.map((option, idx) => `
+                <div class="draggable-item" draggable="true" data-option-idx="${idx}">
+                    ${option}
                 </div>
             `).join('');
+
+            // Clear other tiers
+            ['S', 'A', 'B', 'D', 'E', 'F'].forEach(tier => {
+                document.getElementById(`tier-items-${tier}`).innerHTML = '';
+            });
+
+            // Setup drag and drop
+            setupDragAndDrop();
 
             showScreen('tierScreen');
         }
 
-        function updateTier(optionIdx, tier) {
-            tiers[optionIdx] = tier;
-            const select = document.getElementById(`tier-${optionIdx}`);
-            select.className = `tier-select tier-${tier}`;
+        function setupDragAndDrop() {
+            let draggedElement = null;
+
+            // Add drag event listeners to all draggable items
+            document.querySelectorAll('.draggable-item').forEach(item => {
+                item.addEventListener('dragstart', (e) => {
+                    draggedElement = item;
+                    item.classList.add('dragging');
+                });
+
+                item.addEventListener('dragend', (e) => {
+                    item.classList.remove('dragging');
+                    draggedElement = null;
+                });
+            });
+
+            // Add drop zone event listeners to all tier columns
+            document.querySelectorAll('.tier-column').forEach(column => {
+                column.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    column.classList.add('drag-over');
+                });
+
+                column.addEventListener('dragleave', (e) => {
+                    column.classList.remove('drag-over');
+                });
+
+                column.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    column.classList.remove('drag-over');
+
+                    if (draggedElement) {
+                        const tier = column.dataset.tier;
+                        const optionIdx = draggedElement.dataset.optionIdx;
+                        const tierItems = column.querySelector('.tier-items');
+
+                        // Update tiers mapping
+                        tiers[optionIdx] = tier;
+
+                        // Move the element to new tier
+                        tierItems.appendChild(draggedElement);
+                    }
+                });
+            });
         }
 
         function goBackToName() {
