@@ -31,6 +31,11 @@
             animation: slideUp 0.5s ease;
         }
 
+        /* Wider container when tier screen is active */
+        .container:has(#tierScreen.active) {
+            max-width: 1200px;
+        }
+
         @keyframes slideUp {
             from {
                 opacity: 0;
@@ -133,6 +138,26 @@
             gap: 20px;
             margin: 30px 0;
             flex-wrap: wrap;
+            align-items: center;
+            position: relative;
+        }
+
+        .draw-button {
+            padding: 8px 16px;
+            font-size: 0.85rem;
+            background: #e0e0e0;
+            color: #666;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .draw-button:hover {
+            background: #d0d0d0;
+            border-color: #999;
+            color: #333;
         }
 
         .option-card {
@@ -156,6 +181,51 @@
         .option-card h3 {
             font-size: 1.5rem;
             color: #333;
+            margin-bottom: 15px;
+        }
+
+        .option-score {
+            font-size: 1.1rem;
+            color: #667eea;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .option-tier-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-top: 8px;
+        }
+
+        .surprise-alert {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .surprise-alert h3 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .surprise-alert p {
+            color: #856404;
+            margin-bottom: 15px;
+        }
+
+        .surprise-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .surprise-buttons button {
+            flex: 1;
         }
 
         .progress {
@@ -348,39 +418,42 @@
         }
 
         .tier-selection {
-            display: flex;
-            gap: 15px;
             margin: 20px 0;
-            flex-wrap: wrap;
         }
 
-        .tier-column {
-            flex: 1;
-            min-width: 150px;
+        .tier-row {
+            display: flex;
+            align-items: stretch;
+            margin-bottom: 12px;
             background: #f8f9fa;
             border-radius: 10px;
-            padding: 10px;
-            min-height: 200px;
+            min-height: 80px;
+            overflow: hidden;
         }
 
         .tier-header {
-            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-weight: bold;
-            font-size: 1.2rem;
-            padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 10px;
+            font-size: 1.3rem;
+            padding: 15px 20px;
             color: white;
+            min-width: 90px;
         }
 
         .tier-items {
-            min-height: 150px;
-            padding: 5px;
+            flex: 1;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            padding: 10px;
+            gap: 8px;
+            min-height: 60px;
         }
 
         .draggable-item {
-            padding: 12px;
-            margin-bottom: 8px;
+            padding: 10px 16px;
             background: white;
             border-radius: 8px;
             border: 2px solid #e0e0e0;
@@ -388,6 +461,8 @@
             transition: all 0.2s;
             user-select: none;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            white-space: nowrap;
+            position: relative;
         }
 
         .draggable-item:hover {
@@ -398,12 +473,96 @@
 
         .draggable-item.dragging {
             opacity: 0.5;
-            transform: rotate(5deg);
+            transform: rotate(3deg);
         }
 
-        .tier-column.drag-over {
+        .confidence-indicator {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            line-height: 20px;
+            text-align: center;
+            border-radius: 50%;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .confidence-none .confidence-indicator {
+            background: #e0e0e0;
+            color: #666;
+        }
+
+        .confidence-low .confidence-indicator {
+            background: #ffc107;
+            color: white;
+        }
+
+        .confidence-medium .confidence-indicator {
+            background: #2196f3;
+            color: white;
+        }
+
+        .confidence-high .confidence-indicator {
+            background: #4caf50;
+            color: white;
+        }
+
+        .verification-question {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .verification-question h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 1.1rem;
+        }
+
+        .verification-statement {
+            font-size: 1.2rem;
+            margin: 15px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .verification-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .verification-buttons button {
+            flex: 1;
+        }
+
+        .verify-yes {
+            background: #4caf50 !important;
+        }
+
+        .verify-no {
+            background: #ff4444 !important;
+        }
+
+        .verification-correct {
+            border-left-color: #4caf50;
+            background: #f0f9f0;
+        }
+
+        .verification-incorrect {
+            border-left-color: #ff4444;
+            background: #fff0f0;
+        }
+
+        .tier-row.drag-over .tier-items {
             background: #e8f4ff;
             border: 2px dashed #667eea;
+            border-radius: 5px;
         }
 
         .tier-badge {
@@ -448,6 +607,58 @@
                 min-width: 100%;
             }
         }
+
+        .version-footer {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            font-size: 0.75rem;
+            color: #999;
+            cursor: pointer;
+        }
+
+        .version-footer:hover {
+            color: #667eea;
+        }
+
+        .data-management-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 500px;
+            margin: 20px;
+        }
+
+        .modal-content h2 {
+            margin-top: 0;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .danger-btn {
+            background: #ff4444 !important;
+        }
+
+        .danger-btn:hover {
+            background: #cc0000 !important;
+        }
     </style>
 </head>
 <body>
@@ -455,7 +666,7 @@
         <!-- Screen 1: Welcome -->
         <div id="welcomeScreen" class="screen active">
             <h1>Rank by Pairs</h1>
-            <p class="subtitle">Make decisions through pairwise comparisons</p>
+            <p class="subtitle">Compare how options trade off against each other</p>
             <div class="button-group">
                 <button onclick="startAsOrganizer()">Create New Poll</button>
             </div>
@@ -504,40 +715,51 @@
         <!-- Screen 5: Tier Selection -->
         <div id="tierScreen" class="screen">
             <h1>Assign Tiers</h1>
-            <p class="subtitle">Drag options into tiers (S is best, F is worst)</p>
+            <p class="subtitle">Drag options into tiers (1000x is best, 1/1000 is worst)</p>
             <div class="tier-selection" id="tierSelection">
-                <div class="tier-column" data-tier="S">
-                    <div class="tier-header tier-S">S</div>
+                <div class="tier-row" data-tier="S">
+                    <div class="tier-header tier-S">1000x of</div>
                     <div class="tier-items" id="tier-items-S"></div>
                 </div>
-                <div class="tier-column" data-tier="A">
-                    <div class="tier-header tier-A">A</div>
+                <div class="tier-row" data-tier="A">
+                    <div class="tier-header tier-A">100x of</div>
                     <div class="tier-items" id="tier-items-A"></div>
                 </div>
-                <div class="tier-column" data-tier="B">
-                    <div class="tier-header tier-B">B</div>
+                <div class="tier-row" data-tier="B">
+                    <div class="tier-header tier-B">10x of</div>
                     <div class="tier-items" id="tier-items-B"></div>
                 </div>
-                <div class="tier-column" data-tier="C">
-                    <div class="tier-header tier-C">C</div>
+                <div class="tier-row" data-tier="C">
+                    <div class="tier-header tier-C">1x of</div>
                     <div class="tier-items" id="tier-items-C"></div>
                 </div>
-                <div class="tier-column" data-tier="D">
-                    <div class="tier-header tier-D">D</div>
+                <div class="tier-row" data-tier="D">
+                    <div class="tier-header tier-D">1/10 of</div>
                     <div class="tier-items" id="tier-items-D"></div>
                 </div>
-                <div class="tier-column" data-tier="E">
-                    <div class="tier-header tier-E">E</div>
+                <div class="tier-row" data-tier="E">
+                    <div class="tier-header tier-E">1/100 of</div>
                     <div class="tier-items" id="tier-items-E"></div>
                 </div>
-                <div class="tier-column" data-tier="F">
-                    <div class="tier-header tier-F">F</div>
+                <div class="tier-row" data-tier="F">
+                    <div class="tier-header tier-F">1/1000 of</div>
                     <div class="tier-items" id="tier-items-F"></div>
                 </div>
             </div>
             <div class="button-group">
                 <button class="secondary" onclick="goBackToName()">Back</button>
-                <button onclick="startComparisons()">Continue to Comparisons</button>
+                <button id="continueToComparisonsBtn" onclick="continueToComparisons()">Start Comparisons</button>
+            </div>
+        </div>
+
+        <!-- Screen 5.5: Tier Verification -->
+        <div id="tierVerificationScreen" class="screen">
+            <h1>Verify Tier Relationships</h1>
+            <p class="subtitle">Confirm these relative values are correct</p>
+            <div id="tierVerificationQuestions"></div>
+            <div class="button-group">
+                <button class="secondary" onclick="backToTiersFromVerification()">Back to Tiers</button>
+                <button onclick="continueToComparisons()">Looks Good - Start Comparisons</button>
             </div>
         </div>
 
@@ -545,6 +767,15 @@
         <div id="comparisonScreen" class="screen">
             <h1>Choose Your Preference</h1>
             <div class="progress" id="progressText"></div>
+
+            <div class="surprise-alert" id="surpriseAlert">
+                <h3>⚠️ Surprising Choice</h3>
+                <p id="surpriseMessage"></p>
+                <div class="surprise-buttons">
+                    <button onclick="moveSurprisingItem()">Move Item to Adjust</button>
+                    <button class="secondary" onclick="dismissSurprise()">Keep as Is</button>
+                </div>
+            </div>
 
             <div class="confidence-meter" id="confidenceMeter" style="display: none;">
                 <h3>Ranking Confidence</h3>
@@ -556,14 +787,22 @@
             </div>
 
             <div class="comparison-container">
-                <div class="option-card" onclick="selectOption(0)">
+                <div class="option-card" onclick="selectOption(0)" id="optionCard1">
                     <h3 id="option1"></h3>
+                    <div class="option-score" id="score1"></div>
+                    <div class="option-tier-badge" id="tier1"></div>
                 </div>
-                <div class="option-card" onclick="selectOption(1)">
+                <button class="draw-button" onclick="selectDraw()">Draw</button>
+                <div class="option-card" onclick="selectOption(1)" id="optionCard2">
                     <h3 id="option2"></h3>
+                    <div class="option-score" id="score2"></div>
+                    <div class="option-tier-badge" id="tier2"></div>
                 </div>
             </div>
-            <button class="secondary" onclick="skipComparison()">Skip This Pair</button>
+            <div class="button-group">
+                <button class="secondary" onclick="skipComparison()">Skip This Pair</button>
+                <button class="secondary" onclick="backToTiers()">Adjust Tiers</button>
+            </div>
         </div>
 
         <!-- Screen 7: Thank You (Participant) -->
@@ -600,26 +839,108 @@
             <div class="button-group">
                 <button class="secondary" onclick="exportData()">Export Data</button>
                 <button id="editOptionsBtn" style="display: none;" class="edit-options-btn" onclick="editOptions()">Edit Options</button>
+                <button id="backToShareBtn" style="display: none;" class="secondary" onclick="backToShareLink()">Back to Share Link</button>
                 <button onclick="startAsOrganizer()">Create New Poll</button>
             </div>
         </div>
     </div>
 
+    <!-- Version footer -->
+    <div class="version-footer" onclick="showDataManagement()">
+        v<span id="versionNumber"></span>
+    </div>
+
+    <!-- Data Management Modal -->
+    <div class="data-management-modal" id="dataManagementModal" onclick="closeDataManagement(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h2>Data Management</h2>
+            <p><strong>Current Version:</strong> <span id="modalVersionNumber"></span></p>
+            <p><strong>Stored Polls:</strong> <span id="pollCount"></span></p>
+            <p style="color: #666; font-size: 0.9rem; margin-top: 15px;">
+                Data is automatically migrated between versions when possible.
+                If you encounter issues, you can clear all data below.
+            </p>
+            <div class="modal-buttons">
+                <button class="secondary" onclick="closeDataManagement()">Close</button>
+                <button class="danger-btn" onclick="clearAllData()">Clear All Data</button>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // Data version for migration tracking
+        const DATA_VERSION = 2; // Increment when breaking changes are made
+
         // Global state
         let currentParticipant = '';
         let options = [];
         let comparisons = [];
-        let currentPairIndex = 0;
-        let pairs = [];
         let pollId = '';
         let isOrganizer = false;
         let isAdmin = false;
         let tiers = {}; // Maps option index to tier (S, A, B, C, D, E, F)
         let currentTier = null;
 
+        // Data migration system
+        function migrateData() {
+            const currentVersion = parseInt(localStorage.getItem('dataVersion') || '0');
+
+            if (currentVersion === DATA_VERSION) {
+                return; // No migration needed
+            }
+
+            console.log(`Migrating data from version ${currentVersion} to ${DATA_VERSION}`);
+
+            // Version-specific migrations
+            if (currentVersion < 1) {
+                // Migration from v0 to v1: No changes, just version tracking
+                console.log('Migration v0->v1: Adding version tracking');
+            }
+
+            if (currentVersion < 2) {
+                // Migration from v1 to v2: Add tier information to existing polls
+                console.log('Migration v1->v2: Adding tier system support');
+
+                // Get all poll keys
+                const allKeys = Object.keys(localStorage);
+                const pollKeys = allKeys.filter(key => key.startsWith('poll_'));
+
+                pollKeys.forEach(key => {
+                    try {
+                        const pollData = JSON.parse(localStorage.getItem(key));
+
+                        // Add tiers to participants if missing
+                        if (pollData.participants) {
+                            pollData.participants = pollData.participants.map(p => {
+                                if (!p.tiers) {
+                                    // Default all options to C tier
+                                    const defaultTiers = {};
+                                    pollData.options.forEach((_, idx) => {
+                                        defaultTiers[idx] = 'C';
+                                    });
+                                    p.tiers = defaultTiers;
+                                }
+                                return p;
+                            });
+
+                            localStorage.setItem(key, JSON.stringify(pollData));
+                        }
+                    } catch (e) {
+                        console.error(`Failed to migrate poll ${key}:`, e);
+                    }
+                });
+            }
+
+            // Update version
+            localStorage.setItem('dataVersion', DATA_VERSION.toString());
+            console.log(`Migration complete. Now at version ${DATA_VERSION}`);
+        }
+
         // Initialize from URL on load
-        window.addEventListener('DOMContentLoaded', initFromURL);
+        window.addEventListener('DOMContentLoaded', () => {
+            migrateData();
+            initFromURL();
+        });
 
         function initFromURL() {
             const params = new URLSearchParams(window.location.search);
@@ -637,8 +958,8 @@
         }
 
         function checkAdmin(pollId) {
-            const adminPolls = JSON.parse(localStorage.getItem('adminPolls') || '[]');
-            return adminPolls.includes(pollId);
+            // Always return true - everyone is admin for all polls
+            return true;
         }
 
         function markAsAdmin(pollId) {
@@ -749,19 +1070,36 @@
                 currentParticipant = name;
             }
 
+            // Check if there's saved progress
+            const hasSavedProgress = loadProgress();
+
+            if (hasSavedProgress) {
+                // Ask if user wants to resume
+                if (confirm('You have saved progress. Would you like to resume where you left off?')) {
+                    // Resume from saved progress - go directly to comparisons
+                    startComparisons(false);
+                    return;
+                } else {
+                    // Start fresh - clear saved progress
+                    clearProgress();
+                }
+            }
+
             // Initialize tiers - default all to C tier
             tiers = {};
             options.forEach((_, idx) => {
                 tiers[idx] = 'C';
             });
 
-            // Populate C tier with all items initially
+            // Populate C tier with all items initially (no prices shown initially)
             const cTierContainer = document.getElementById('tier-items-C');
-            cTierContainer.innerHTML = options.map((option, idx) => `
-                <div class="draggable-item" draggable="true" data-option-idx="${idx}">
-                    ${option}
-                </div>
-            `).join('');
+            cTierContainer.innerHTML = options.map((option, idx) => {
+                return `
+                    <div class="draggable-item" draggable="true" data-option-idx="${idx}">
+                        ${option}
+                    </div>
+                `;
+            }).join('');
 
             // Clear other tiers
             ['S', 'A', 'B', 'D', 'E', 'F'].forEach(tier => {
@@ -790,28 +1128,34 @@
                 });
             });
 
-            // Add drop zone event listeners to all tier columns
-            document.querySelectorAll('.tier-column').forEach(column => {
-                column.addEventListener('dragover', (e) => {
+            // Add drop zone event listeners to all tier rows
+            document.querySelectorAll('.tier-row').forEach(row => {
+                row.addEventListener('dragover', (e) => {
                     e.preventDefault();
-                    column.classList.add('drag-over');
+                    row.classList.add('drag-over');
                 });
 
-                column.addEventListener('dragleave', (e) => {
-                    column.classList.remove('drag-over');
+                row.addEventListener('dragleave', (e) => {
+                    row.classList.remove('drag-over');
                 });
 
-                column.addEventListener('drop', (e) => {
+                row.addEventListener('drop', (e) => {
                     e.preventDefault();
-                    column.classList.remove('drag-over');
+                    row.classList.remove('drag-over');
 
                     if (draggedElement) {
-                        const tier = column.dataset.tier;
+                        const tier = row.dataset.tier;
                         const optionIdx = draggedElement.dataset.optionIdx;
-                        const tierItems = column.querySelector('.tier-items');
+                        const tierItems = row.querySelector('.tier-items');
 
                         // Update tiers mapping
                         tiers[optionIdx] = tier;
+
+                        // Extract option text
+                        const optionText = options[optionIdx];
+
+                        // Update the element's display (no price on initial tier assignment)
+                        draggedElement.innerHTML = `${optionText}`;
 
                         // Move the element to new tier
                         tierItems.appendChild(draggedElement);
@@ -824,99 +1168,651 @@
             showScreen('nameScreen');
         }
 
-        function startComparisons() {
-            // Group options by tier
-            const tierGroups = { S: [], A: [], B: [], C: [], D: [], E: [], F: [] };
+        function showTierVerification() {
+            // Get tier multiplier map
+            const tierMultipliers = {
+                'S': 1000, 'A': 100, 'B': 10, 'C': 1,
+                'D': 0.1, 'E': 0.01, 'F': 0.001
+            };
+            const tierLabels = {
+                'S': '1000x', 'A': '100x', 'B': '10x', 'C': '1x',
+                'D': '1/10', 'E': '1/100', 'F': '1/1000'
+            };
+
+            // Find which tiers have items
+            const usedTiers = {};
             options.forEach((option, idx) => {
-                tierGroups[tiers[idx]].push(idx);
+                const tier = tiers[idx];
+                if (!usedTiers[tier]) {
+                    usedTiers[tier] = [];
+                }
+                usedTiers[tier].push(option);
             });
 
-            // Generate pairs within each tier
-            pairs = [];
+            // Sort tiers by multiplier value (highest to lowest)
+            const sortedTiers = Object.keys(usedTiers).sort((a, b) =>
+                tierMultipliers[b] - tierMultipliers[a]
+            );
+
+            // Generate verification questions for adjacent tiers
+            let questionsHTML = '';
+            for (let i = 0; i < sortedTiers.length - 1; i++) {
+                const higherTier = sortedTiers[i];
+                const lowerTier = sortedTiers[i + 1];
+                const higherMultiplier = tierMultipliers[higherTier];
+                const lowerMultiplier = tierMultipliers[lowerTier];
+                const ratio = higherMultiplier / lowerMultiplier;
+
+                // Pick example items from each tier
+                const higherExample = usedTiers[higherTier][0];
+                const lowerExample = usedTiers[lowerTier][0];
+
+                questionsHTML += `
+                    <div class="verification-question" id="verify-${higherTier}-${lowerTier}">
+                        <div class="verification-statement">
+                            You'd take <strong>${Math.round(ratio)}</strong> wins the size of
+                            "<strong>${lowerExample}</strong>"
+                            for one the size of
+                            "<strong>${higherExample}</strong>"
+                        </div>
+                        <div class="verification-buttons">
+                            <button class="verify-yes" onclick="verifyAnswer('${higherTier}', '${lowerTier}', true)">Yes, that's right</button>
+                            <button class="verify-no" onclick="verifyAnswer('${higherTier}', '${lowerTier}', false)">No, adjust tiers</button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (questionsHTML === '') {
+                // Only one tier used, skip verification
+                continueToComparisons();
+                return;
+            }
+
+            document.getElementById('tierVerificationQuestions').innerHTML = questionsHTML;
+            showScreen('tierVerificationScreen');
+        }
+
+        function verifyAnswer(higherTier, lowerTier, isCorrect) {
+            if (isCorrect) {
+                // Mark as correct and continue
+                const questionEl = document.getElementById(`verify-${higherTier}-${lowerTier}`);
+                questionEl.classList.add('verification-correct');
+                questionEl.querySelector('.verification-buttons').innerHTML =
+                    '<span style="color: #4caf50; font-weight: bold;">✓ Confirmed</span>';
+
+                // Check if all questions are answered
+                const allQuestions = document.querySelectorAll('.verification-question');
+                const allConfirmed = Array.from(allQuestions).every(q =>
+                    q.classList.contains('verification-correct')
+                );
+
+                // If all confirmed, could auto-advance (optional)
+            } else {
+                // Send back to tier selection
+                backToTiersFromVerification();
+            }
+        }
+
+        function backToTiersFromVerification() {
+            // Go back to tier selection
+            populateTiersWithConfidence();
+            showScreen('tierScreen');
+        }
+
+        function backToTiers() {
+            // Save current comparison progress
+            // Re-populate tiers with current assignments and show confidence
+            populateTiersWithConfidence();
+            showScreen('tierScreen');
+        }
+
+        function continueToComparisons() {
+            // Save tier configuration before starting comparisons
+            saveProgress();
+
+            // Keep existing comparisons if any exist
+            const hasExistingComparisons = comparisons && comparisons.length > 0;
+            startComparisons(!hasExistingComparisons);
+        }
+
+        function computeBradleyTerryPrices(initialPrices, comparisons, tiers) {
+            // Tier placements set the base prices
+            // Use ALL comparisons to refine prices freely
+            // Prices determine tiers, not the other way around
+            const n = initialPrices.length;
+            let prices = [...initialPrices];
+
+            if (comparisons.length === 0) {
+                // No comparisons: return initial prices with no uncertainty info
+                return { prices, tiers, uncertainties: new Array(n).fill(Infinity) };
+            }
+
+            // Iterative algorithm: adjust prices based on win/loss record
+            const maxIterations = 20;
+            const learningRate = 0.3;
+
+            for (let iter = 0; iter < maxIterations; iter++) {
+                const adjustments = new Array(n).fill(1.0);
+
+                comparisons.forEach(({ winner, loser }) => {
+                    // Expected probability that winner beats loser
+                    const pWin = prices[winner] / (prices[winner] + prices[loser]);
+
+                    // Winner should be higher, loser should be lower
+                    // Actual outcome: winner won (1.0), so residual = 1.0 - pWin
+                    const residual = 1.0 - pWin;
+
+                    // Adjust prices proportionally
+                    adjustments[winner] *= (1 + learningRate * residual);
+                    adjustments[loser] *= (1 - learningRate * residual);
+                });
+
+                // Apply adjustments
+                for (let i = 0; i < n; i++) {
+                    prices[i] *= adjustments[i];
+                    // Keep prices positive and reasonable
+                    prices[i] = Math.max(0.5, Math.min(2000000, prices[i]));
+                }
+            }
+
+            // Calculate uncertainty using Fisher Information
+            // For Bradley-Terry: Var(log(price_i)) ≈ 1 / (sum of information from comparisons)
+            // Information from a comparison is p_i(1-p_i) where p_i is win probability
+            const uncertainties = new Array(n).fill(0);
+
+            for (let i = 0; i < n; i++) {
+                let fisherInfo = 0;
+
+                comparisons.forEach(({ winner, loser }) => {
+                    if (winner === i || loser === i) {
+                        const opponent = winner === i ? loser : winner;
+                        const pWin = prices[i] / (prices[i] + prices[opponent]);
+                        // Fisher information contribution: p(1-p)
+                        fisherInfo += pWin * (1 - pWin);
+                    }
+                });
+
+                if (fisherInfo > 0) {
+                    // Standard deviation of log(price) is sqrt(1/fisherInfo)
+                    // Convert to multiplicative uncertainty: exp(stddev)
+                    const logStdDev = Math.sqrt(1 / fisherInfo);
+                    uncertainties[i] = Math.exp(logStdDev);
+                } else {
+                    // No comparisons involving this item
+                    uncertainties[i] = Infinity;
+                }
+            }
+
+            // Update tiers based on final prices
+            const newTiers = { ...tiers };
+            for (let i = 0; i < n; i++) {
+                const price = prices[i];
+                // Determine tier from price (geometric mean boundaries)
+                if (price >= 450000) {  // sqrt(1M * 100k) ≈ 316k, use 450k as threshold
+                    newTiers[i] = 'S';
+                } else if (price >= 45000) {  // sqrt(100k * 10k) ≈ 31.6k, use 45k
+                    newTiers[i] = 'A';
+                } else if (price >= 4500) {  // sqrt(10k * 1k) ≈ 3.16k, use 4.5k
+                    newTiers[i] = 'B';
+                } else if (price >= 450) {  // sqrt(1k * 100) ≈ 316, use 450
+                    newTiers[i] = 'C';
+                } else if (price >= 45) {  // sqrt(100 * 10) ≈ 31.6, use 45
+                    newTiers[i] = 'D';
+                } else if (price >= 4.5) {  // sqrt(10 * 1) ≈ 3.16, use 4.5
+                    newTiers[i] = 'E';
+                } else {
+                    newTiers[i] = 'F';
+                }
+            }
+
+            return { prices, tiers: newTiers, uncertainties };
+        }
+
+        function populateTiersWithConfidence() {
+            // Clear all tier containers
             ['S', 'A', 'B', 'C', 'D', 'E', 'F'].forEach(tier => {
-                const tierOptions = tierGroups[tier];
-                for (let i = 0; i < tierOptions.length; i++) {
-                    for (let j = i + 1; j < tierOptions.length; j++) {
-                        pairs.push([tierOptions[i], tierOptions[j], tier]);
+                document.getElementById(`tier-items-${tier}`).innerHTML = '';
+            });
+
+            // Calculate current prices based on tiers and comparisons using Bradley-Terry model
+            const tierBasePrices = {
+                S: 1000000,  // 1000x of baseline
+                A: 100000,   // 100x of baseline
+                B: 10000,    // 10x of baseline
+                C: 1000,     // 1x baseline
+                D: 100,      // 1/10 of baseline
+                E: 10,       // 1/100 of baseline
+                F: 1         // 1/1000 of baseline
+            };
+
+            // Initialize prices based on tier assignments
+            let prices = new Array(options.length).fill(0);
+            options.forEach((_, idx) => {
+                const tier = tiers[idx] || 'C';
+                prices[idx] = tierBasePrices[tier];
+            });
+
+            // Refine prices using comparisons - may update tiers too
+            if (comparisons && comparisons.length > 0) {
+                const result = computeBradleyTerryPrices(prices, comparisons, tiers);
+                prices = result.prices;
+                tiers = result.tiers;
+            }
+
+            // Calculate confidence for each option based on comparisons
+            const optionComparisons = {};
+            options.forEach((_, idx) => {
+                optionComparisons[idx] = { wins: 0, total: 0 };
+            });
+
+            // Only calculate if comparisons exist
+            if (comparisons && comparisons.length > 0) {
+                comparisons.forEach(({ winner, loser }) => {
+                    optionComparisons[winner].wins++;
+                    optionComparisons[winner].total++;
+                    optionComparisons[loser].total++;
+                });
+            }
+
+            // Calculate multipliers relative to 1x tier (C tier) baseline
+            // Use average of C tier items, or the C tier base price if no C tier items exist
+            const cTierIndices = options.map((_, idx) => idx).filter(idx => tiers[idx] === 'C');
+            let baselinePrice;
+            if (cTierIndices.length > 0) {
+                // Average price of C tier items
+                const cTierTotal = cTierIndices.reduce((sum, idx) => sum + prices[idx], 0);
+                baselinePrice = cTierTotal / cTierIndices.length;
+            } else {
+                // No C tier items, use the C tier base price
+                baselinePrice = 1000;
+            }
+
+            // Group items by tier with their metadata
+            const tierItems = {
+                S: [], A: [], B: [], C: [], D: [], E: [], F: []
+            };
+
+            options.forEach((option, idx) => {
+                const tier = tiers[idx];
+                const compData = optionComparisons[idx];
+                const price = prices[idx];
+                const multiplier = price / baselinePrice;
+
+                // Confidence indicator: more comparisons = more confident
+                let confidenceClass = '';
+                let confidenceLabel = '';
+                if (compData.total === 0) {
+                    confidenceClass = 'confidence-none';
+                    confidenceLabel = '?';
+                } else if (compData.total < 3) {
+                    confidenceClass = 'confidence-low';
+                    confidenceLabel = '!';
+                } else if (compData.total < 5) {
+                    confidenceClass = 'confidence-medium';
+                    confidenceLabel = '~';
+                } else {
+                    confidenceClass = 'confidence-high';
+                    confidenceLabel = '✓';
+                }
+
+                // Show multiplier only if there are comparisons
+                let multiplierDisplay = '';
+                if (comparisons && comparisons.length > 0) {
+                    if (multiplier >= 10) {
+                        multiplierDisplay = ` (${Math.round(multiplier)}x)`;
+                    } else if (multiplier >= 2) {
+                        multiplierDisplay = ` (${multiplier.toFixed(1)}x)`;
+                    } else if (multiplier >= 0.1) {
+                        multiplierDisplay = ` (${multiplier.toFixed(2)}x)`;
+                    } else {
+                        multiplierDisplay = ` (1/${Math.round(1/multiplier)})`;
                     }
                 }
+
+                tierItems[tier].push({
+                    idx,
+                    option,
+                    multiplier,
+                    multiplierDisplay,
+                    confidenceClass,
+                    confidenceLabel
+                });
             });
 
-            // Shuffle pairs for variety
-            pairs.sort(() => Math.random() - 0.5);
+            // Sort each tier by multiplier (highest first) and populate
+            ['S', 'A', 'B', 'C', 'D', 'E', 'F'].forEach(tier => {
+                const tierContainer = document.getElementById(`tier-items-${tier}`);
 
-            comparisons = [];
-            currentPairIndex = 0;
+                // Sort by multiplier descending (highest first)
+                tierItems[tier].sort((a, b) => b.multiplier - a.multiplier);
+
+                // Build HTML for this tier
+                tierContainer.innerHTML = tierItems[tier].map(item => `
+                    <div class="draggable-item ${item.confidenceClass}" draggable="true" data-option-idx="${item.idx}">
+                        <span class="confidence-indicator">${item.confidenceLabel}</span>
+                        ${item.option}${item.multiplierDisplay}
+                    </div>
+                `).join('');
+            });
+
+            // Re-setup drag and drop
+            setupDragAndDrop();
+        }
+
+        function getNextAdaptiveComparison() {
+            // Calculate current prices and uncertainties
+            const tierBasePrices = {
+                S: 1000000, A: 100000, B: 10000, C: 1000, D: 100, E: 10, F: 1
+            };
+
+            let prices = new Array(options.length).fill(0);
+            options.forEach((_, idx) => {
+                const tier = tiers[idx] || 'C';
+                prices[idx] = tierBasePrices[tier];
+            });
+
+            let uncertainties = new Array(options.length).fill(Infinity);
+
+            if (comparisons && comparisons.length > 0) {
+                const result = computeBradleyTerryPrices(prices, comparisons, tiers);
+                prices = result.prices;
+                uncertainties = result.uncertainties;
+            }
+
+            // Find pair with highest combined uncertainty
+            let bestPair = null;
+            let bestScore = -Infinity;
+
+            // Check all possible pairs
+            for (let i = 0; i < options.length; i++) {
+                for (let j = i + 1; j < options.length; j++) {
+                    // Skip if already compared
+                    const alreadyCompared = comparisons.some(c =>
+                        (c.winner === i && c.loser === j) ||
+                        (c.winner === j && c.loser === i)
+                    );
+                    if (alreadyCompared) continue;
+
+                    // Score = combined uncertainty * informativeness
+                    // Higher uncertainty items are prioritized
+                    const combinedUncertainty = (uncertainties[i] + uncertainties[j]) / 2;
+
+                    // Informativeness: comparisons between similar-strength items are more informative
+                    const pWin = prices[i] / (prices[i] + prices[j]);
+                    const informativeness = pWin * (1 - pWin); // Maximized when p=0.5
+
+                    const score = combinedUncertainty * (1 + informativeness * 5); // Weight informativeness
+
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestPair = [i, j];
+                    }
+                }
+            }
+
+            return bestPair;
+        }
+
+        function shouldStopComparisons() {
+            // Calculate current uncertainties
+            const tierBasePrices = {
+                S: 1000000, A: 100000, B: 10000, C: 1000, D: 100, E: 10, F: 1
+            };
+
+            let prices = new Array(options.length).fill(0);
+            options.forEach((_, idx) => {
+                const tier = tiers[idx] || 'C';
+                prices[idx] = tierBasePrices[tier];
+            });
+
+            if (comparisons.length === 0) return false;
+
+            const result = computeBradleyTerryPrices(prices, comparisons, tiers);
+            const uncertainties = result.uncertainties;
+
+            // Stop if all uncertainties are below threshold (1.5x = reasonably confident)
+            const maxUncertainty = Math.max(...uncertainties.filter(u => isFinite(u)));
+            return maxUncertainty < 1.5 || comparisons.length >= options.length * 5; // Safety limit
+        }
+
+        function startComparisons(resetProgress = true) {
+            // Adaptive comparison strategy: pick comparisons based on uncertainty
+
+            // If resetting, clear progress. Otherwise keep existing comparisons
+            if (resetProgress) {
+                comparisons = [];
+            }
 
             showScreen('comparisonScreen');
             showNextPair();
         }
 
+        let surpriseContext = null; // Store context for surprise handling
+        let currentDisplayedPair = null; // Store the pair currently being shown
+
         function showNextPair() {
-            if (currentPairIndex >= pairs.length) {
+            // Check if we should stop (all uncertainties below threshold)
+            if (shouldStopComparisons()) {
                 calculateResults();
                 return;
             }
 
-            const [idx1, idx2, tier] = pairs[currentPairIndex];
+            // Get next adaptive comparison
+            const nextPair = getNextAdaptiveComparison();
+
+            if (!nextPair) {
+                // No more useful comparisons
+                calculateResults();
+                return;
+            }
+
+            // Store current pair
+            currentDisplayedPair = nextPair;
+
+            // Hide surprise alert
+            document.getElementById('surpriseAlert').style.display = 'none';
+
+            const [idx1, idx2] = nextPair;
+
+            // Display options
             document.getElementById('option1').textContent = options[idx1];
             document.getElementById('option2').textContent = options[idx2];
 
-            const tierInfo = tier ? ` (Tier ${tier})` : '';
+            // Hide scores (don't display during comparisons)
+            document.getElementById('score1').textContent = '';
+            document.getElementById('score2').textContent = '';
+
+            // Hide tier badges (don't display during comparisons)
+            const tier1El = document.getElementById('tier1');
+            const tier2El = document.getElementById('tier2');
+            tier1El.textContent = '';
+            tier1El.className = 'option-tier-badge';
+            tier2El.textContent = '';
+            tier2El.className = 'option-tier-badge';
+
+            // Show progress with uncertainty information
+            let confidenceLabel = 'Building...';
+
+            if (comparisons.length > 0) {
+                const result = computeBradleyTerryPrices(
+                    options.map((_, idx) => {
+                        const tierBasePrices = { S: 1000000, A: 100000, B: 10000, C: 1000, D: 100, E: 10, F: 1 };
+                        return tierBasePrices[tiers[idx] || 'C'];
+                    }),
+                    comparisons,
+                    tiers
+                );
+                const finiteUncertainties = result.uncertainties.filter(u => isFinite(u));
+
+                if (finiteUncertainties.length > 0) {
+                    const maxUncertainty = Math.max(...finiteUncertainties);
+                    confidenceLabel = maxUncertainty < 1.5 ? 'High' : maxUncertainty < 2.5 ? 'Medium' : 'Building...';
+                }
+            }
+
             document.getElementById('progressText').textContent =
-                `Comparison ${currentPairIndex + 1} of ${pairs.length}${tierInfo}`;
+                `Comparison ${comparisons.length + 1} • Confidence: ${confidenceLabel}`;
 
             updateConfidence();
         }
 
         function updateConfidence() {
-            const totalPairs = pairs.length;
-            const completed = comparisons.length;
-            const minRequired = Math.ceil(options.length * 1.5); // Minimum comparisons for decent confidence
+            // Confidence is now shown in the progress text using Fisher Information uncertainties
+            // This function is kept for compatibility but does nothing
+            // (The old confidence meter UI is hidden by default in the HTML)
+        }
 
-            if (completed === 0) return;
+        function saveProgress() {
+            // Save in-progress session to localStorage
+            const progressKey = `progress_${pollId}_${currentParticipant}`;
+            const progressData = {
+                participant: currentParticipant,
+                tiers: tiers,
+                comparisons: comparisons,
+                timestamp: new Date().toISOString()
+            };
+            localStorage.setItem(progressKey, JSON.stringify(progressData));
+        }
 
-            // Calculate confidence (0-100%)
-            let confidence = Math.min(100, (completed / totalPairs) * 100);
+        function loadProgress() {
+            // Try to load saved progress
+            const progressKey = `progress_${pollId}_${currentParticipant}`;
+            const savedProgress = localStorage.getItem(progressKey);
 
-            // Show confidence meter after a few comparisons
-            if (completed >= 3) {
-                document.getElementById('confidenceMeter').style.display = 'block';
-                document.getElementById('confidenceFill').style.width = confidence + '%';
-                document.getElementById('confidenceFill').textContent = Math.round(confidence) + '%';
-
-                // Update message based on confidence
-                let message = '';
-                if (confidence < 30) {
-                    message = 'Keep going to improve accuracy';
-                } else if (confidence < 60) {
-                    message = 'Good progress! More comparisons = better results';
-                } else if (confidence < 90) {
-                    message = 'Great! You can finish now or continue for maximum accuracy';
-                } else {
-                    message = 'Excellent! You\'ve completed all comparisons';
-                }
-                document.getElementById('confidenceMessage').textContent = message;
-
-                // Show finish button when confidence is reasonable
-                if (completed >= minRequired && confidence >= 40) {
-                    document.getElementById('finishButton').style.display = 'block';
-                }
+            if (savedProgress) {
+                const progressData = JSON.parse(savedProgress);
+                tiers = progressData.tiers;
+                comparisons = progressData.comparisons || [];
+                return true;
             }
+            return false;
+        }
+
+        function clearProgress() {
+            // Clear saved progress when ranking is complete
+            const progressKey = `progress_${pollId}_${currentParticipant}`;
+            localStorage.removeItem(progressKey);
         }
 
         function selectOption(choice) {
-            const [idx1, idx2] = pairs[currentPairIndex];
+            if (!currentDisplayedPair) return;
+
+            const [idx1, idx2] = currentDisplayedPair;
             const winner = choice === 0 ? idx1 : idx2;
             const loser = choice === 0 ? idx2 : idx1;
 
+            // Calculate current prices to check for surprising choice
+            const tierBasePrices = {
+                S: 1000000, A: 100000, B: 10000, C: 1000, D: 100, E: 10, F: 1
+            };
+
+            let prices = new Array(options.length).fill(0);
+            options.forEach((_, idx) => {
+                const tier = tiers[idx] || 'C';
+                prices[idx] = tierBasePrices[tier];
+            });
+
+            let uncertainties = new Array(options.length).fill(Infinity);
+
+            // Refine with existing comparisons and get uncertainties
+            if (comparisons && comparisons.length > 0) {
+                const result = computeBradleyTerryPrices(prices, comparisons, tiers);
+                prices = result.prices;
+                uncertainties = result.uncertainties;
+            }
+
+            const winnerPrice = prices[winner];
+            const loserPrice = prices[loser];
+            const winnerUncertainty = uncertainties[winner];
+            const loserUncertainty = uncertainties[loser];
+
+            // Check if uncertainties are finite (items have been compared)
+            if (isFinite(winnerUncertainty) && isFinite(loserUncertainty)) {
+                // Winner's upper bound (95% confidence: ~2 std devs) vs loser's lower bound
+                // Since uncertainties are multiplicative, bounds are price * uncertainty^2
+                const winnerUpperBound = winnerPrice * Math.pow(winnerUncertainty, 2);
+                const loserLowerBound = loserPrice / Math.pow(loserUncertainty, 2);
+
+                // Surprising if winner's upper bound is below loser's lower bound
+                const isSurprising = winnerUpperBound < loserLowerBound;
+
+                if (isSurprising) {
+                    const winnerTier = tiers[winner] || 'C';
+                    const loserTier = tiers[loser] || 'C';
+
+                    // Store context for surprise handling
+                    surpriseContext = { winner, loser, winnerTier, loserTier, choice, winnerPrice, loserPrice };
+
+                    // Show surprise alert with price information
+                    const tierMultipliers = { 'S': '1000x', 'A': '100x', 'B': '10x', 'C': '1x', 'D': '1/10', 'E': '1/100', 'F': '1/1000' };
+                    const priceRatio = (loserPrice / winnerPrice).toFixed(1);
+                    const message = `You chose "${options[winner]}" (${tierMultipliers[winnerTier]}) over "${options[loser]}" (${tierMultipliers[loserTier]}). This is surprising because "${options[loser]}" is currently valued about ${priceRatio}x higher. Would you like to adjust tiers?`;
+
+                    document.getElementById('surpriseMessage').textContent = message;
+                    document.getElementById('surpriseAlert').style.display = 'block';
+
+                    // Don't advance yet - wait for user decision
+                    return;
+                }
+            }
+
+            // Not surprising - continue normally
             comparisons.push({ winner, loser });
-            currentPairIndex++;
+
+            // Auto-save progress after each comparison
+            saveProgress();
+
             showNextPair();
         }
 
+        function selectDraw() {
+            // Handle draw - skip this comparison and move to next
+            // Don't record any comparison since they're equal
+            if (!currentDisplayedPair) return;
+
+            // Just move to the next pair without recording a comparison
+            showNextPair();
+        }
+
+        function dismissSurprise() {
+            // User confirmed the choice is correct
+            const { winner, loser } = surpriseContext;
+            comparisons.push({ winner, loser });
+            surpriseContext = null;
+
+            // Auto-save progress
+            saveProgress();
+
+            showNextPair();
+        }
+
+        function moveSurprisingItem() {
+            // Move the winning item to a higher tier
+            const { winner, winnerTier, loserTier } = surpriseContext;
+
+            // Calculate suggested tier (one level higher than loser)
+            const tierOrder = ['F', 'E', 'D', 'C', 'B', 'A', 'S'];
+            const loserTierIndex = tierOrder.indexOf(loserTier);
+            const suggestedTier = loserTierIndex < tierOrder.length - 1 ? tierOrder[loserTierIndex + 1] : loserTier;
+
+            // Update tier
+            tiers[winner] = suggestedTier;
+
+            // Reset comparisons to recalculate with new tier
+            comparisons = [];
+            surpriseContext = null;
+
+            // Save updated tier configuration
+            saveProgress();
+
+            // Go back to tier screen to show the change
+            populateTiersWithConfidence();
+            alert(`"${options[winner]}" has been moved to tier ${suggestedTier}. Review the tiers and continue when ready.`);
+            showScreen('tierScreen');
+        }
+
         function skipComparison() {
-            currentPairIndex++;
             showNextPair();
         }
 
@@ -954,30 +1850,35 @@
         }
 
         function calculateResults() {
-            // Assign base scores based on tier
-            const tierBaseScores = { S: 2000, A: 1600, B: 1300, C: 1000, D: 700, E: 400, F: 100 };
-            const ratings = new Array(options.length).fill(0);
+            // Calculate prices based on tiers and comparisons using Bradley-Terry model
+            const tierBasePrices = {
+                S: 1000000,  // 1000x of baseline
+                A: 100000,   // 100x of baseline
+                B: 10000,    // 10x of baseline
+                C: 1000,     // 1x baseline
+                D: 100,      // 1/10 of baseline
+                E: 10,       // 1/100 of baseline
+                F: 1         // 1/1000 of baseline
+            };
 
-            // Initialize ratings based on tiers
+            // Initialize prices based on tier assignments
+            let prices = new Array(options.length).fill(0);
             options.forEach((_, idx) => {
                 const tier = tiers[idx] || 'C';
-                ratings[idx] = tierBaseScores[tier];
+                prices[idx] = tierBasePrices[tier];
             });
 
-            // Apply Elo within tiers for fine-tuning
-            const K = 32;
-            comparisons.forEach(({ winner, loser }) => {
-                const expectedWinner = 1 / (1 + Math.pow(10, (ratings[loser] - ratings[winner]) / 400));
-                const expectedLoser = 1 / (1 + Math.pow(10, (ratings[winner] - ratings[loser]) / 400));
-
-                ratings[winner] += K * (1 - expectedWinner);
-                ratings[loser] += K * (0 - expectedLoser);
-            });
+            // Refine prices using comparisons - may update tiers too
+            if (comparisons && comparisons.length > 0) {
+                const result = computeBradleyTerryPrices(prices, comparisons, tiers);
+                prices = result.prices;
+                tiers = result.tiers;
+            }
 
             // Create ranking with tier info
             const ranking = options.map((option, idx) => ({
                 option,
-                rating: Math.round(ratings[idx]),
+                rating: Math.round(prices[idx]),
                 tier: tiers[idx] || 'C'
             })).sort((a, b) => b.rating - a.rating);
 
@@ -997,6 +1898,9 @@
             pollData.participants = pollData.participants.filter(p => p.name !== currentParticipant);
             pollData.participants.push(participantData);
             localStorage.setItem(`poll_${pollId}`, JSON.stringify(pollData));
+
+            // Clear saved progress since ranking is now complete
+            clearProgress();
 
             // Show thank you screen for participants
             if (!isOrganizer) {
@@ -1077,13 +1981,29 @@
             if (isAdmin) {
                 document.getElementById('adminBadge').style.display = 'inline-block';
                 document.getElementById('editOptionsBtn').style.display = 'inline-block';
+                document.getElementById('backToShareBtn').style.display = 'inline-block';
             } else {
                 document.getElementById('adminBadge').style.display = 'none';
                 document.getElementById('editOptionsBtn').style.display = 'none';
+                document.getElementById('backToShareBtn').style.display = 'none';
             }
 
             updateGroupRanking();
             showScreen('resultsScreen');
+        }
+
+        function backToShareLink() {
+            if (!isAdmin) {
+                alert('Only the poll creator can access the share link screen');
+                return;
+            }
+
+            // Set up the share link
+            const shareUrl = `${window.location.origin}${window.location.pathname}?poll=${pollId}`;
+            document.getElementById('shareLinkInput').value = shareUrl;
+
+            // Show the share link screen
+            showScreen('shareLinkScreen');
         }
 
         function deleteParticipant(name) {
@@ -1216,6 +2136,45 @@
             link.click();
             URL.revokeObjectURL(url);
         }
+
+        // Data management functions
+        function showDataManagement() {
+            document.getElementById('versionNumber').textContent = DATA_VERSION;
+            document.getElementById('modalVersionNumber').textContent = DATA_VERSION;
+
+            // Count polls
+            const allKeys = Object.keys(localStorage);
+            const pollKeys = allKeys.filter(key => key.startsWith('poll_'));
+            document.getElementById('pollCount').textContent = pollKeys.length;
+
+            document.getElementById('dataManagementModal').style.display = 'flex';
+        }
+
+        function closeDataManagement(event) {
+            if (!event || event.target.id === 'dataManagementModal') {
+                document.getElementById('dataManagementModal').style.display = 'none';
+            }
+        }
+
+        function clearAllData() {
+            if (!confirm('Are you sure you want to clear ALL data? This will delete all polls and cannot be undone.')) {
+                return;
+            }
+
+            if (!confirm('This is your last chance. Really delete everything?')) {
+                return;
+            }
+
+            // Clear all localStorage
+            localStorage.clear();
+            alert('All data has been cleared. The page will now reload.');
+            window.location.reload();
+        }
+
+        // Set version number on load
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('versionNumber').textContent = DATA_VERSION;
+        });
     </script>
 </body>
 </html>
