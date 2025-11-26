@@ -866,7 +866,11 @@
             <h1>Thank You!</h1>
             <p class="subtitle" id="thankYouName"></p>
             <ol class="ranking-list" id="thankYouRanking"></ol>
-            <p class="help-text">Your rankings have been recorded. The organizer can view all results.</p>
+            <p class="help-text">Your rankings have been recorded.</p>
+            <div class="button-group">
+                <button onclick="viewResults()">View Results</button>
+                <button class="secondary" onclick="startAsOrganizer()">Create New Poll</button>
+            </div>
         </div>
 
         <!-- Screen 8: Results View (Organizer) -->
@@ -2032,11 +2036,11 @@
             // Clear saved progress since ranking is now complete
             clearProgress();
 
-            // Show thank you screen for participants
-            if (!isOrganizer) {
-                showThankYou(ranking);
-            } else {
+            // Show results if admin, otherwise show thank you screen
+            if (isAdmin) {
                 viewResults();
+            } else {
+                showThankYou(ranking);
             }
         }
 
