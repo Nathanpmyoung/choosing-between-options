@@ -347,6 +347,66 @@
             margin-left: 10px;
         }
 
+        .tier-selection {
+            margin: 20px 0;
+        }
+
+        .tier-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .tier-item-name {
+            flex: 1;
+            font-size: 1.1rem;
+            color: #333;
+        }
+
+        .tier-select {
+            padding: 8px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .tier-select:hover {
+            border-color: #667eea;
+        }
+
+        .tier-select.tier-S { color: #ff4444; }
+        .tier-select.tier-A { color: #ff8800; }
+        .tier-select.tier-B { color: #ffbb00; }
+        .tier-select.tier-C { color: #00cc00; }
+        .tier-select.tier-D { color: #0088cc; }
+        .tier-select.tier-E { color: #6600cc; }
+        .tier-select.tier-F { color: #999999; }
+
+        .tier-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 5px;
+            font-weight: bold;
+            margin-right: 10px;
+            font-size: 0.9rem;
+        }
+
+        .tier-S { background: #ff4444; color: white; }
+        .tier-A { background: #ff8800; color: white; }
+        .tier-B { background: #ffbb00; color: white; }
+        .tier-C { background: #00cc00; color: white; }
+        .tier-D { background: #0088cc; color: white; }
+        .tier-E { background: #6600cc; color: white; }
+        .tier-F { background: #999999; color: white; }
+
         @media (max-width: 600px) {
             .container {
                 padding: 20px;
@@ -411,13 +471,24 @@
             <h1>Rank by Pairs</h1>
             <p class="subtitle">Enter your name to get started</p>
             <input type="text" id="nameInput" placeholder="Enter your name" />
-            <button onclick="startComparisons()">Start Ranking</button>
+            <button onclick="startTierSelection()">Start Ranking</button>
             <div id="adminViewResults" style="display: none; margin-top: 20px; text-align: center;">
                 <span class="start-over" onclick="viewResults()">View Results (Admin)</span>
             </div>
         </div>
 
-        <!-- Screen 5: Pairwise Comparisons -->
+        <!-- Screen 5: Tier Selection -->
+        <div id="tierScreen" class="screen">
+            <h1>Assign Tiers</h1>
+            <p class="subtitle">Group options into tiers (S is best, F is worst)</p>
+            <div class="tier-selection" id="tierSelection"></div>
+            <div class="button-group">
+                <button class="secondary" onclick="goBackToName()">Back</button>
+                <button onclick="startComparisons()">Continue to Comparisons</button>
+            </div>
+        </div>
+
+        <!-- Screen 6: Pairwise Comparisons -->
         <div id="comparisonScreen" class="screen">
             <h1>Choose Your Preference</h1>
             <div class="progress" id="progressText"></div>
@@ -442,7 +513,7 @@
             <button class="secondary" onclick="skipComparison()">Skip This Pair</button>
         </div>
 
-        <!-- Screen 6: Thank You (Participant) -->
+        <!-- Screen 7: Thank You (Participant) -->
         <div id="thankYouScreen" class="screen">
             <h1>Thank You!</h1>
             <p class="subtitle" id="thankYouName"></p>
@@ -450,7 +521,7 @@
             <p class="help-text">Your rankings have been recorded. The organizer can view all results.</p>
         </div>
 
-        <!-- Screen 7: Results View (Organizer) -->
+        <!-- Screen 8: Results View (Organizer) -->
         <div id="resultsScreen" class="screen">
             <h1>Poll Results<span id="adminBadge" style="display: none;" class="admin-badge">Admin</span></h1>
 
@@ -491,6 +562,8 @@
         let pollId = '';
         let isOrganizer = false;
         let isAdmin = false;
+        let tiers = {}; // Maps option index to tier (S, A, B, C, D, E, F)
+        let currentTier = null;
 
         // Initialize from URL on load
         window.addEventListener('DOMContentLoaded', initFromURL);
@@ -613,7 +686,7 @@
             showScreen('nameScreen');
         }
 
-        function startComparisons() {
+        function startTierSelection() {
             if (!isOrganizer) {
                 const name = document.getElementById('nameInput').value.trim();
                 if (!name) {
@@ -623,13 +696,59 @@
                 currentParticipant = name;
             }
 
-            // Generate all pairs
+            // Initialize tiers - default all to C tier
+            tiers = {};
+            options.forEach((_, idx) => {
+                tiers[idx] = 'C';
+            });
+
+            // Show tier selection screen
+            const tierSelection = document.getElementById('tierSelection');
+            tierSelection.innerHTML = options.map((option, idx) => `
+                <div class="tier-item">
+                    <span class="tier-item-name">${option}</span>
+                    <select class="tier-select tier-C" id="tier-${idx}" onchange="updateTier(${idx}, this.value)">
+                        <option value="S">S</option>
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C" selected>C</option>
+                        <option value="D">D</option>
+                        <option value="E">E</option>
+                        <option value="F">F</option>
+                    </select>
+                </div>
+            `).join('');
+
+            showScreen('tierScreen');
+        }
+
+        function updateTier(optionIdx, tier) {
+            tiers[optionIdx] = tier;
+            const select = document.getElementById(`tier-${optionIdx}`);
+            select.className = `tier-select tier-${tier}`;
+        }
+
+        function goBackToName() {
+            showScreen('nameScreen');
+        }
+
+        function startComparisons() {
+            // Group options by tier
+            const tierGroups = { S: [], A: [], B: [], C: [], D: [], E: [], F: [] };
+            options.forEach((option, idx) => {
+                tierGroups[tiers[idx]].push(idx);
+            });
+
+            // Generate pairs within each tier
             pairs = [];
-            for (let i = 0; i < options.length; i++) {
-                for (let j = i + 1; j < options.length; j++) {
-                    pairs.push([i, j]);
+            ['S', 'A', 'B', 'C', 'D', 'E', 'F'].forEach(tier => {
+                const tierOptions = tierGroups[tier];
+                for (let i = 0; i < tierOptions.length; i++) {
+                    for (let j = i + 1; j < tierOptions.length; j++) {
+                        pairs.push([tierOptions[i], tierOptions[j], tier]);
+                    }
                 }
-            }
+            });
 
             // Shuffle pairs for variety
             pairs.sort(() => Math.random() - 0.5);
@@ -647,11 +766,13 @@
                 return;
             }
 
-            const [idx1, idx2] = pairs[currentPairIndex];
+            const [idx1, idx2, tier] = pairs[currentPairIndex];
             document.getElementById('option1').textContent = options[idx1];
             document.getElementById('option2').textContent = options[idx2];
+
+            const tierInfo = tier ? ` (Tier ${tier})` : '';
             document.getElementById('progressText').textContent =
-                `Comparison ${currentPairIndex + 1} of ${pairs.length}`;
+                `Comparison ${currentPairIndex + 1} of ${pairs.length}${tierInfo}`;
 
             updateConfidence();
         }
@@ -741,10 +862,18 @@
         }
 
         function calculateResults() {
-            // Calculate Elo-style ratings
-            const ratings = new Array(options.length).fill(1000);
-            const K = 32; // Elo K-factor
+            // Assign base scores based on tier
+            const tierBaseScores = { S: 2000, A: 1600, B: 1300, C: 1000, D: 700, E: 400, F: 100 };
+            const ratings = new Array(options.length).fill(0);
 
+            // Initialize ratings based on tiers
+            options.forEach((_, idx) => {
+                const tier = tiers[idx] || 'C';
+                ratings[idx] = tierBaseScores[tier];
+            });
+
+            // Apply Elo within tiers for fine-tuning
+            const K = 32;
             comparisons.forEach(({ winner, loser }) => {
                 const expectedWinner = 1 / (1 + Math.pow(10, (ratings[loser] - ratings[winner]) / 400));
                 const expectedLoser = 1 / (1 + Math.pow(10, (ratings[winner] - ratings[loser]) / 400));
@@ -753,10 +882,11 @@
                 ratings[loser] += K * (0 - expectedLoser);
             });
 
-            // Create ranking
+            // Create ranking with tier info
             const ranking = options.map((option, idx) => ({
                 option,
-                rating: Math.round(ratings[idx])
+                rating: Math.round(ratings[idx]),
+                tier: tiers[idx] || 'C'
             })).sort((a, b) => b.rating - a.rating);
 
             // Save participant data to poll
@@ -767,6 +897,7 @@
                 timestamp: new Date().toISOString(),
                 comparisons: comparisons,
                 ranking: ranking,
+                tiers: tiers,
                 enabled: true
             };
 
@@ -790,6 +921,7 @@
             thankYouList.innerHTML = rankingWithMultipliers.map((item, idx) => `
                 <li class="ranking-item">
                     <span class="rank-number">${idx + 1}</span>
+                    <span class="tier-badge tier-${item.tier}">${item.tier}</span>
                     <span class="rank-name">${item.option}</span>
                     <span class="rank-score">
                         ${item.rating}
@@ -832,6 +964,7 @@
                             ${rankingWithMultipliers.map((item, idx) => `
                                 <li class="ranking-item">
                                     <span class="rank-number">${idx + 1}</span>
+                                    ${item.tier ? `<span class="tier-badge tier-${item.tier}">${item.tier}</span>` : ''}
                                     <span class="rank-name">${item.option}</span>
                                     <span class="rank-score">
                                         ${item.rating}
@@ -934,23 +1067,34 @@
                 return;
             }
 
-            // Average rankings across participants
-            const aggregateRatings = {};
+            // Average rankings and tiers across participants
+            const aggregateData = {};
             options.forEach(option => {
-                aggregateRatings[option] = 0;
+                aggregateData[option] = { totalRating: 0, tiers: [] };
             });
 
             enabledParticipants.forEach(p => {
                 p.ranking.forEach(item => {
-                    aggregateRatings[item.option] += item.rating;
+                    aggregateData[item.option].totalRating += item.rating;
+                    if (item.tier) {
+                        aggregateData[item.option].tiers.push(item.tier);
+                    }
                 });
             });
 
-            const groupRanking = Object.entries(aggregateRatings)
-                .map(([option, totalRating]) => ({
-                    option,
-                    rating: Math.round(totalRating / enabledParticipants.length)
-                }))
+            const groupRanking = Object.entries(aggregateData)
+                .map(([option, data]) => {
+                    // Find most common tier
+                    const tierCounts = {};
+                    data.tiers.forEach(t => tierCounts[t] = (tierCounts[t] || 0) + 1);
+                    const mostCommonTier = Object.keys(tierCounts).sort((a, b) => tierCounts[b] - tierCounts[a])[0] || 'C';
+
+                    return {
+                        option,
+                        rating: Math.round(data.totalRating / enabledParticipants.length),
+                        tier: mostCommonTier
+                    };
+                })
                 .sort((a, b) => b.rating - a.rating);
 
             const groupRankingWithMultipliers = calculateRelativeMultipliers(groupRanking);
@@ -959,6 +1103,7 @@
             groupList.innerHTML = groupRankingWithMultipliers.map((item, idx) => `
                 <li class="ranking-item">
                     <span class="rank-number">${idx + 1}</span>
+                    ${item.tier ? `<span class="tier-badge tier-${item.tier}">${item.tier}</span>` : ''}
                     <span class="rank-name">${item.option}</span>
                     <span class="rank-score">
                         Avg: ${item.rating} (${enabledParticipants.length} ${enabledParticipants.length === 1 ? 'person' : 'people'})
