@@ -317,6 +317,36 @@
             background: #4caf50 !important;
         }
 
+        .delete-btn {
+            background: #ff4444 !important;
+            padding: 5px 10px;
+            font-size: 0.85rem;
+            margin-left: 10px;
+        }
+
+        .delete-btn:hover {
+            background: #cc0000 !important;
+        }
+
+        .edit-options-btn {
+            background: #ffc107 !important;
+            color: #333 !important;
+        }
+
+        .edit-options-btn:hover {
+            background: #ffb300 !important;
+        }
+
+        .admin-badge {
+            display: inline-block;
+            background: #4caf50;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.85rem;
+            margin-left: 10px;
+        }
+
         @media (max-width: 600px) {
             .container {
                 padding: 20px;
@@ -382,6 +412,9 @@
             <p class="subtitle">Enter your name to get started</p>
             <input type="text" id="nameInput" placeholder="Enter your name" />
             <button onclick="startComparisons()">Start Ranking</button>
+            <div id="adminViewResults" style="display: none; margin-top: 20px; text-align: center;">
+                <span class="start-over" onclick="viewResults()">View Results (Admin)</span>
+            </div>
         </div>
 
         <!-- Screen 5: Pairwise Comparisons -->
@@ -419,7 +452,7 @@
 
         <!-- Screen 7: Results View (Organizer) -->
         <div id="resultsScreen" class="screen">
-            <h1>Poll Results</h1>
+            <h1>Poll Results<span id="adminBadge" style="display: none;" class="admin-badge">Admin</span></h1>
 
             <div class="section">
                 <h2 class="section-title">Group Rankings</h2>
@@ -442,6 +475,7 @@
 
             <div class="button-group">
                 <button class="secondary" onclick="exportData()">Export Data</button>
+                <button id="editOptionsBtn" style="display: none;" class="edit-options-btn" onclick="editOptions()">Edit Options</button>
                 <button onclick="startAsOrganizer()">Create New Poll</button>
             </div>
         </div>
@@ -456,6 +490,7 @@
         let pairs = [];
         let pollId = '';
         let isOrganizer = false;
+        let isAdmin = false;
 
         // Initialize from URL on load
         window.addEventListener('DOMContentLoaded', initFromURL);
@@ -465,11 +500,26 @@
             pollId = params.get('poll');
 
             if (pollId) {
+                // Check if user is admin for this poll
+                isAdmin = checkAdmin(pollId);
                 // Participant mode - load poll and show name entry
                 loadPoll(pollId);
             } else {
                 // Show welcome screen
                 showScreen('welcomeScreen');
+            }
+        }
+
+        function checkAdmin(pollId) {
+            const adminPolls = JSON.parse(localStorage.getItem('adminPolls') || '[]');
+            return adminPolls.includes(pollId);
+        }
+
+        function markAsAdmin(pollId) {
+            const adminPolls = JSON.parse(localStorage.getItem('adminPolls') || '[]');
+            if (!adminPolls.includes(pollId)) {
+                adminPolls.push(pollId);
+                localStorage.setItem('adminPolls', JSON.stringify(adminPolls));
             }
         }
 
@@ -515,6 +565,10 @@
             };
             localStorage.setItem(`poll_${pollId}`, JSON.stringify(pollData));
 
+            // Mark this user as admin for this poll
+            markAsAdmin(pollId);
+            isAdmin = true;
+
             // Show share link
             const shareUrl = `${window.location.origin}${window.location.pathname}?poll=${pollId}`;
             document.getElementById('shareLinkInput').value = shareUrl;
@@ -548,6 +602,14 @@
             }
 
             options = pollData.options;
+
+            // Show admin link if user is admin
+            if (isAdmin) {
+                document.getElementById('adminViewResults').style.display = 'block';
+            } else {
+                document.getElementById('adminViewResults').style.display = 'none';
+            }
+
             showScreen('nameScreen');
         }
 
@@ -755,6 +817,7 @@
                            ${p.enabled ? 'checked' : ''}
                            onchange="toggleParticipant('${p.name}')">
                     <label for="participant-${idx}">${p.name} (${new Date(p.timestamp).toLocaleDateString()})</label>
+                    ${isAdmin ? `<button class="delete-btn" onclick="deleteParticipant('${p.name}')">Delete</button>` : ''}
                 </div>
             `).join('');
 
@@ -785,8 +848,70 @@
             const shareUrl = `${window.location.origin}${window.location.pathname}?poll=${pollId}`;
             document.getElementById('resultsShareLink').value = shareUrl;
 
+            // Show admin controls if user is admin
+            if (isAdmin) {
+                document.getElementById('adminBadge').style.display = 'inline-block';
+                document.getElementById('editOptionsBtn').style.display = 'inline-block';
+            } else {
+                document.getElementById('adminBadge').style.display = 'none';
+                document.getElementById('editOptionsBtn').style.display = 'none';
+            }
+
             updateGroupRanking();
             showScreen('resultsScreen');
+        }
+
+        function deleteParticipant(name) {
+            if (!isAdmin) {
+                alert('Only the poll creator can delete entries');
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to delete ${name}'s ranking?`)) {
+                return;
+            }
+
+            const pollData = JSON.parse(localStorage.getItem(`poll_${pollId}`));
+            pollData.participants = pollData.participants.filter(p => p.name !== name);
+            localStorage.setItem(`poll_${pollId}`, JSON.stringify(pollData));
+
+            // Refresh results view
+            viewResults();
+        }
+
+        function editOptions() {
+            if (!isAdmin) {
+                alert('Only the poll creator can edit options');
+                return;
+            }
+
+            const pollData = JSON.parse(localStorage.getItem(`poll_${pollId}`));
+            const currentOptions = pollData.options.join('\n');
+            const newOptions = prompt('Edit poll options (one per line):\n\nWarning: Changing options will invalidate existing rankings!', currentOptions);
+
+            if (newOptions === null || newOptions.trim() === '') {
+                return; // User cancelled or entered nothing
+            }
+
+            const updatedOptions = newOptions.split('\n')
+                .map(o => o.trim())
+                .filter(o => o.length > 0);
+
+            if (updatedOptions.length < 2) {
+                alert('Please enter at least 2 options');
+                return;
+            }
+
+            if (!confirm('This will clear all participant rankings. Continue?')) {
+                return;
+            }
+
+            pollData.options = updatedOptions;
+            pollData.participants = []; // Clear all rankings
+            localStorage.setItem(`poll_${pollId}`, JSON.stringify(pollData));
+
+            alert('Options updated! All rankings have been cleared.');
+            viewResults();
         }
 
         function toggleParticipant(name) {
