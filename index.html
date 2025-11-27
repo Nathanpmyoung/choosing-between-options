@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rank by Pairs</title>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
     <style>
         * {
             margin: 0;
@@ -238,6 +243,37 @@
         .ranking-list {
             list-style: none;
             margin: 20px 0;
+        }
+
+        .ranking-header {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            background: #e8ecf5;
+            border-radius: 8px;
+            font-weight: 600;
+            color: #555;
+            font-size: 0.9rem;
+        }
+
+        .ranking-header-rank {
+            min-width: 40px;
+            margin-right: 15px;
+        }
+
+        .ranking-header-tier {
+            min-width: 40px;
+            margin-right: 10px;
+        }
+
+        .ranking-header-entry {
+            flex: 1;
+        }
+
+        .ranking-header-multiple {
+            min-width: 100px;
+            text-align: right;
         }
 
         .ranking-item {
@@ -731,7 +767,8 @@
         <!-- Screen 2: Options Setup (Organizer) -->
         <div id="setupScreen" class="screen">
             <h1>Setup Your Poll</h1>
-            <p class="subtitle">Enter the options you want people to rank</p>
+            <p class="subtitle">Enter your name and the options you want people to rank</p>
+            <input type="text" id="organizerNameInput" placeholder="Your name" style="margin-bottom: 20px;" />
             <textarea id="optionsInput" placeholder="Enter each option on a new line&#10;&#10;Example:&#10;Project A&#10;Project B&#10;Project C"></textarea>
             <p class="help-text">Enter each option on a separate line</p>
             <div class="button-group">
@@ -806,6 +843,9 @@
                 <button class="secondary" onclick="goBackToName()">Back</button>
                 <button id="continueToComparisonsBtn" onclick="continueToComparisons()">Start Comparisons</button>
             </div>
+            <div id="adminViewResultsFromTier" style="display: none; margin-top: 20px; text-align: center;">
+                <span class="start-over" onclick="viewResults()">View Results (Admin)</span>
+            </div>
         </div>
 
         <!-- Screen 5.5: Tier Verification -->
@@ -859,6 +899,9 @@
                 <button class="secondary" onclick="skipComparison()">Skip This Pair</button>
                 <button class="secondary" onclick="backToTiers()">Adjust Tiers</button>
             </div>
+            <div id="adminViewResultsFromComparison" style="display: none; margin-top: 20px; text-align: center;">
+                <span class="start-over" onclick="viewResults()">View Results (Admin)</span>
+            </div>
         </div>
 
         <!-- Screen 7: Thank You (Participant) -->
@@ -880,6 +923,12 @@
             <div class="section">
                 <h2 class="section-title">Group Rankings</h2>
                 <div id="participantToggles"></div>
+                <div class="ranking-header">
+                    <span class="ranking-header-rank">#</span>
+                    <span class="ranking-header-tier">Tier</span>
+                    <span class="ranking-header-entry">Entry</span>
+                    <span class="ranking-header-multiple">Multiple</span>
+                </div>
                 <ol class="ranking-list" id="groupRanking"></ol>
             </div>
 
@@ -928,6 +977,68 @@
     </div>
 
     <script>
+        // Firebase configuration and initialization
+        const firebaseConfig = {
+            apiKey: "AIzaSyBWrkqJd_3tDz-sCW2nkGf-L3B8EgJzlW4",
+            authDomain: "rank-by-pairs.firebaseapp.com",
+            projectId: "rank-by-pairs",
+            storageBucket: "rank-by-pairs.firebasestorage.app",
+            messagingSenderId: "1030838763826",
+            appId: "1:1030838763826:web:11d990ab626e3c03a6d72b",
+            measurementId: "G-ZDTSSD4MX6"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Firebase helper functions
+        async function savePollData(pollId, pollData) {
+            try {
+                await db.collection('polls').doc(pollId).set(pollData);
+                // Also save to localStorage as backup
+                localStorage.setItem(`poll_${pollId}`, JSON.stringify(pollData));
+            } catch (error) {
+                console.error('Error saving poll data:', error);
+                // Fallback to localStorage only
+                localStorage.setItem(`poll_${pollId}`, JSON.stringify(pollData));
+            }
+        }
+
+        async function loadPollData(pollId) {
+            try {
+                const doc = await db.collection('polls').doc(pollId).get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    // Cache in localStorage
+                    localStorage.setItem(`poll_${pollId}`, JSON.stringify(data));
+                    return data;
+                }
+            } catch (error) {
+                console.error('Error loading poll data from Firebase:', error);
+            }
+
+            // Fallback to localStorage
+            const localData = localStorage.getItem(`poll_${pollId}`);
+            return localData ? JSON.parse(localData) : null;
+        }
+
+        async function updatePollData(pollId, updates) {
+            try {
+                await db.collection('polls').doc(pollId).update(updates);
+                // Update localStorage cache
+                const currentData = JSON.parse(localStorage.getItem(`poll_${pollId}`) || '{}');
+                const updatedData = { ...currentData, ...updates };
+                localStorage.setItem(`poll_${pollId}`, JSON.stringify(updatedData));
+            } catch (error) {
+                console.error('Error updating poll data:', error);
+                // Fallback to localStorage only
+                const currentData = JSON.parse(localStorage.getItem(`poll_${pollId}`) || '{}');
+                const updatedData = { ...currentData, ...updates };
+                localStorage.setItem(`poll_${pollId}`, JSON.stringify(updatedData));
+            }
+        }
+
         // Data version for migration tracking
         const DATA_VERSION = 2; // Increment when breaking changes are made
 
@@ -940,6 +1051,7 @@
         let isOrganizer = false;
         let isAdmin = false;
         let tiers = {}; // Maps option index to tier (S, A, B, C, D, E, F)
+        let manualTiers = {}; // Tracks which option tiers have been manually set (to prevent auto-reassignment)
         let currentTier = null;
 
         // Data migration system
@@ -1108,7 +1220,14 @@
             showScreen('welcomeScreen');
         }
 
-        function createPoll() {
+        async function createPoll() {
+            // Get organizer name
+            const organizerName = document.getElementById('organizerNameInput').value.trim();
+            if (!organizerName) {
+                alert('Please enter your name');
+                return;
+            }
+
             const optionsText = document.getElementById('optionsInput').value.trim();
             if (!optionsText) {
                 alert('Please enter at least 2 options');
@@ -1127,23 +1246,59 @@
             // Generate unique poll ID
             pollId = generatePollId();
 
-            // Save poll to localStorage
+            // Save poll to Firebase
             const pollData = {
                 id: pollId,
                 options: options,
                 created: new Date().toISOString(),
                 participants: []
             };
-            localStorage.setItem(`poll_${pollId}`, JSON.stringify(pollData));
+            await savePollData(pollId, pollData);
 
             // Mark this user as admin for this poll
             markAsAdmin(pollId);
             isAdmin = true;
 
-            // Show share link
-            const shareUrl = `${window.location.origin}${window.location.pathname}?poll=${pollId}`;
-            document.getElementById('shareLinkInput').value = shareUrl;
-            showScreen('shareLinkScreen');
+            // Set current participant to organizer name
+            currentParticipant = organizerName;
+            isOrganizer = true;
+
+            // Initialize for fresh start
+            comparisons = [];
+            drawnPairs = [];
+
+            // Initialize tiers - default all to C tier
+            tiers = {};
+            manualTiers = {};
+            options.forEach((_, idx) => {
+                tiers[idx] = 'C';
+            });
+
+            // Populate C tier with all items initially
+            const cTierContainer = document.getElementById('tier-items-C');
+            cTierContainer.innerHTML = options.map((option, idx) => {
+                return `
+                    <div class="draggable-item" draggable="true" data-option-idx="${idx}">
+                        ${option}
+                    </div>
+                `;
+            }).join('');
+
+            // Clear other tiers
+            ['S', 'A', 'B', 'D', 'E', 'F'].forEach(tier => {
+                document.getElementById(`tier-items-${tier}`).innerHTML = '';
+            });
+
+            // Setup drag and drop
+            setupDragAndDrop();
+
+            // Show admin link if user is admin
+            if (isAdmin) {
+                document.getElementById('adminViewResultsFromTier').style.display = 'block';
+            }
+
+            // Take organizer directly to tier selection to start their ranking
+            showScreen('tierScreen');
         }
 
         function generatePollId() {
@@ -1157,6 +1312,15 @@
             alert('Link copied to clipboard!');
         }
 
+        function participateInOwnPoll() {
+            // Allow organizer to participate in their own poll
+            // Switch to participant mode
+            isOrganizer = false;
+
+            // Reload poll to ensure options are set
+            loadPoll(pollId);
+        }
+
         function copyResultsLink() {
             const input = document.getElementById('resultsShareLink');
             input.select();
@@ -1164,8 +1328,8 @@
             alert('Link copied to clipboard!');
         }
 
-        function loadPoll(id) {
-            const pollData = JSON.parse(localStorage.getItem(`poll_${id}`));
+        async function loadPoll(id) {
+            const pollData = await loadPollData(id);
             if (!pollData) {
                 alert('Poll not found');
                 showScreen('welcomeScreen');
@@ -1209,8 +1373,13 @@
                 }
             }
 
+            // Initialize for fresh start
+            comparisons = [];
+            drawnPairs = [];
+
             // Initialize tiers - default all to C tier
             tiers = {};
+            manualTiers = {};
             options.forEach((_, idx) => {
                 tiers[idx] = 'C';
             });
@@ -1232,6 +1401,11 @@
 
             // Setup drag and drop
             setupDragAndDrop();
+
+            // Show admin link if user is admin
+            if (isAdmin) {
+                document.getElementById('adminViewResultsFromTier').style.display = 'block';
+            }
 
             showScreen('tierScreen');
         }
@@ -1274,6 +1448,9 @@
 
                         // Update tiers mapping
                         tiers[optionIdx] = tier;
+
+                        // Mark this tier as manually set (prevents auto-reassignment)
+                        manualTiers[optionIdx] = tier;
 
                         // Extract option text
                         const optionText = options[optionIdx];
@@ -1400,12 +1577,24 @@
             startComparisons(!hasExistingComparisons);
         }
 
-        function computeBradleyTerryPrices(initialPrices, comparisons, tiers) {
+        function computeBradleyTerryPrices(initialPrices, comparisons, tiers, manualTiers = {}) {
             // Tier placements set the base prices
             // Use ALL comparisons to refine prices freely
             // Prices determine tiers, not the other way around
+            // EXCEPT: manually-set tiers are locked and prices are reset to tier base
             const n = initialPrices.length;
             let prices = [...initialPrices];
+
+            // Tier base prices for manual assignments
+            const tierBasePrices = {
+                S: 1000000,  // 1000x of baseline
+                A: 100000,   // 100x of baseline
+                B: 10000,    // 10x of baseline
+                C: 1000,     // 1x baseline
+                D: 100,      // 1/10 of baseline
+                E: 10,       // 1/100 of baseline
+                F: 1         // 1/1000 of baseline
+            };
 
             if (comparisons.length === 0) {
                 // No comparisons: return initial prices with no uncertainty info
@@ -1468,25 +1657,32 @@
                 }
             }
 
-            // Update tiers based on final prices
+            // Update tiers based on final prices (but respect manual tier assignments)
             const newTiers = { ...tiers };
             for (let i = 0; i < n; i++) {
-                const price = prices[i];
-                // Determine tier from price (geometric mean boundaries)
-                if (price >= 450000) {  // sqrt(1M * 100k) ≈ 316k, use 450k as threshold
-                    newTiers[i] = 'S';
-                } else if (price >= 45000) {  // sqrt(100k * 10k) ≈ 31.6k, use 45k
-                    newTiers[i] = 'A';
-                } else if (price >= 4500) {  // sqrt(10k * 1k) ≈ 3.16k, use 4.5k
-                    newTiers[i] = 'B';
-                } else if (price >= 450) {  // sqrt(1k * 100) ≈ 316, use 450
-                    newTiers[i] = 'C';
-                } else if (price >= 45) {  // sqrt(100 * 10) ≈ 31.6, use 45
-                    newTiers[i] = 'D';
-                } else if (price >= 4.5) {  // sqrt(10 * 1) ≈ 3.16, use 4.5
-                    newTiers[i] = 'E';
+                // If this tier was manually set, keep it and reset price to tier base
+                if (manualTiers.hasOwnProperty(i)) {
+                    newTiers[i] = manualTiers[i];
+                    prices[i] = tierBasePrices[manualTiers[i]];
                 } else {
-                    newTiers[i] = 'F';
+                    // Auto-assign tier based on calculated price
+                    const price = prices[i];
+                    // Determine tier from price (geometric mean boundaries)
+                    if (price >= 450000) {  // sqrt(1M * 100k) ≈ 316k, use 450k as threshold
+                        newTiers[i] = 'S';
+                    } else if (price >= 45000) {  // sqrt(100k * 10k) ≈ 31.6k, use 45k
+                        newTiers[i] = 'A';
+                    } else if (price >= 4500) {  // sqrt(10k * 1k) ≈ 3.16k, use 4.5k
+                        newTiers[i] = 'B';
+                    } else if (price >= 450) {  // sqrt(1k * 100) ≈ 316, use 450
+                        newTiers[i] = 'C';
+                    } else if (price >= 45) {  // sqrt(100 * 10) ≈ 31.6, use 45
+                        newTiers[i] = 'D';
+                    } else if (price >= 4.5) {  // sqrt(10 * 1) ≈ 3.16, use 4.5
+                        newTiers[i] = 'E';
+                    } else {
+                        newTiers[i] = 'F';
+                    }
                 }
             }
 
@@ -1519,7 +1715,7 @@
 
             // Refine prices using comparisons - may update tiers too
             if (comparisons && comparisons.length > 0) {
-                const result = computeBradleyTerryPrices(prices, comparisons, tiers);
+                const result = computeBradleyTerryPrices(prices, comparisons, tiers, manualTiers);
                 prices = result.prices;
                 tiers = result.tiers;
             }
@@ -1639,7 +1835,7 @@
             let uncertainties = new Array(options.length).fill(Infinity);
 
             if (comparisons && comparisons.length > 0) {
-                const result = computeBradleyTerryPrices(prices, comparisons, tiers);
+                const result = computeBradleyTerryPrices(prices, comparisons, tiers, manualTiers);
                 prices = result.prices;
                 uncertainties = result.uncertainties;
             }
@@ -1699,7 +1895,7 @@
 
             if (comparisons.length === 0) return false;
 
-            const result = computeBradleyTerryPrices(prices, comparisons, tiers);
+            const result = computeBradleyTerryPrices(prices, comparisons, tiers, manualTiers);
             const uncertainties = result.uncertainties;
 
             // Stop if all uncertainties are below threshold (1.5x = reasonably confident)
@@ -1713,6 +1909,12 @@
             // If resetting, clear progress. Otherwise keep existing comparisons
             if (resetProgress) {
                 comparisons = [];
+            }
+
+            // Show admin link if user is admin or organizer
+            console.log('startComparisons - isAdmin:', isAdmin, 'isOrganizer:', isOrganizer);
+            if (isAdmin || isOrganizer) {
+                document.getElementById('adminViewResultsFromComparison').style.display = 'block';
             }
 
             showScreen('comparisonScreen');
@@ -1800,10 +2002,59 @@
             const progressData = {
                 participant: currentParticipant,
                 tiers: tiers,
+                manualTiers: manualTiers,
                 comparisons: comparisons,
+                drawnPairs: drawnPairs,
                 timestamp: new Date().toISOString()
             };
             localStorage.setItem(progressKey, JSON.stringify(progressData));
+        }
+
+        async function saveParticipantData() {
+            // Save current progress as participant data to the poll
+            // This ensures partial responses are captured even if user doesn't complete all comparisons
+            if (!currentParticipant || !comparisons || comparisons.length === 0) {
+                return; // Nothing to save yet
+            }
+
+            const tierBasePrices = {
+                S: 1000000, A: 100000, B: 10000, C: 1000, D: 100, E: 10, F: 1
+            };
+
+            // Calculate current ranking based on progress
+            let prices = new Array(options.length).fill(0);
+            options.forEach((_, idx) => {
+                const tier = tiers[idx] || 'C';
+                prices[idx] = tierBasePrices[tier];
+            });
+
+            const result = computeBradleyTerryPrices(prices, comparisons, tiers, manualTiers);
+            prices = result.prices;
+            const finalTiers = result.tiers;
+
+            const ranking = options.map((option, idx) => ({
+                option,
+                rating: Math.round(prices[idx]),
+                tier: finalTiers[idx] || 'C'
+            })).sort((a, b) => b.rating - a.rating);
+
+            // Save this participant's data to the poll
+            const pollData = await loadPollData(pollId);
+            if (!pollData) return; // Poll not found
+
+            const participantData = {
+                name: currentParticipant,
+                timestamp: new Date().toISOString(),
+                comparisons: comparisons,
+                ranking: ranking,
+                tiers: finalTiers,
+                enabled: true
+            };
+
+            // Remove existing submission from this participant and add updated one
+            pollData.participants = pollData.participants.filter(p => p.name !== currentParticipant);
+            pollData.participants.push(participantData);
+            await savePollData(pollId, pollData);
         }
 
         function loadProgress() {
@@ -1814,7 +2065,9 @@
             if (savedProgress) {
                 const progressData = JSON.parse(savedProgress);
                 tiers = progressData.tiers;
+                manualTiers = progressData.manualTiers || {};
                 comparisons = progressData.comparisons || [];
+                drawnPairs = progressData.drawnPairs || [];
                 return true;
             }
             return false;
@@ -1848,7 +2101,7 @@
 
             // Refine with existing comparisons and get uncertainties
             if (comparisons && comparisons.length > 0) {
-                const result = computeBradleyTerryPrices(prices, comparisons, tiers);
+                const result = computeBradleyTerryPrices(prices, comparisons, tiers, manualTiers);
                 prices = result.prices;
                 uncertainties = result.uncertainties;
             }
@@ -1894,6 +2147,9 @@
             // Auto-save progress after each comparison
             saveProgress();
 
+            // Save participant data so partial responses are captured
+            saveParticipantData();
+
             showNextPair();
         }
 
@@ -1903,7 +2159,10 @@
 
             // Record this pair as a draw so it won't be shown again
             drawnPairs.push([currentDisplayedPair[0], currentDisplayedPair[1]]);
-            saveData();
+            saveProgress();
+
+            // Save participant data so partial responses are captured
+            saveParticipantData();
 
             // Move to the next pair without affecting rankings
             showNextPair();
@@ -1917,6 +2176,9 @@
 
             // Auto-save progress
             saveProgress();
+
+            // Save participant data so partial responses are captured
+            saveParticipantData();
 
             showNextPair();
         }
@@ -1962,17 +2224,22 @@
             const baselineRating = Math.max(lowestRating, 1); // Avoid division by zero
 
             return rankings.map(item => {
-                const multiplier = item.rating / baselineRating;
+                const rawMultiplier = item.rating / baselineRating;
+                const multiplier = rawMultiplier / 1000; // Divide by 1000
                 let multiplierText = '';
 
-                if (multiplier >= 10) {
-                    multiplierText = `${Math.round(multiplier)}x`;
-                } else if (multiplier >= 5) {
+                if (multiplier >= 1000) {
+                    multiplierText = `${(multiplier / 1000).toFixed(1)}kx`;
+                } else if (multiplier >= 10) {
                     multiplierText = `${Math.round(multiplier)}x`;
                 } else if (multiplier >= 2) {
                     multiplierText = `${multiplier.toFixed(1)}x`;
-                } else if (multiplier >= 1.5) {
-                    multiplierText = `${multiplier.toFixed(1)}x`;
+                } else if (multiplier >= 1) {
+                    multiplierText = `${multiplier.toFixed(2)}x`;
+                } else if (multiplier >= 0.01) {
+                    multiplierText = `${multiplier.toFixed(3)}x`;
+                } else {
+                    multiplierText = `${multiplier.toExponential(2)}x`;
                 }
 
                 return {
@@ -2004,7 +2271,7 @@
 
             // Refine prices using comparisons - may update tiers too
             if (comparisons && comparisons.length > 0) {
-                const result = computeBradleyTerryPrices(prices, comparisons, tiers);
+                const result = computeBradleyTerryPrices(prices, comparisons, tiers, manualTiers);
                 prices = result.prices;
                 tiers = result.tiers;
             }
@@ -2036,8 +2303,13 @@
             // Clear saved progress since ranking is now complete
             clearProgress();
 
-            // Show results if admin, otherwise show thank you screen
-            if (isAdmin) {
+            // Show share link if organizer, results if admin, otherwise thank you screen
+            if (isOrganizer) {
+                // Organizer just completed their initial ranking - show share link
+                const shareUrl = `${window.location.origin}${window.location.pathname}?poll=${pollId}`;
+                document.getElementById('shareLinkInput').value = shareUrl;
+                showScreen('shareLinkScreen');
+            } else if (isAdmin) {
                 viewResults();
             } else {
                 showThankYou(ranking);
@@ -2062,8 +2334,48 @@
             showScreen('thankYouScreen');
         }
 
-        function viewResults() {
-            const pollData = JSON.parse(localStorage.getItem(`poll_${pollId}`));
+        async function viewResults() {
+            // If we have in-progress comparisons, save them as participant data first
+            if (currentParticipant && comparisons && comparisons.length > 0) {
+                // Calculate current ranking based on progress
+                const tierBasePrices = {
+                    S: 1000000, A: 100000, B: 10000, C: 1000, D: 100, E: 10, F: 1
+                };
+
+                let prices = new Array(options.length).fill(0);
+                options.forEach((_, idx) => {
+                    const tier = tiers[idx] || 'C';
+                    prices[idx] = tierBasePrices[tier];
+                });
+
+                const result = computeBradleyTerryPrices(prices, comparisons, tiers, manualTiers);
+                prices = result.prices;
+                const finalTiers = result.tiers;
+
+                const ranking = options.map((option, idx) => ({
+                    option,
+                    rating: Math.round(prices[idx]),
+                    tier: finalTiers[idx] || 'C'
+                })).sort((a, b) => b.rating - a.rating);
+
+                // Save this participant's data
+                const pollData = await loadPollData(pollId);
+                const participantData = {
+                    name: currentParticipant,
+                    timestamp: new Date().toISOString(),
+                    comparisons: comparisons,
+                    ranking: ranking,
+                    tiers: finalTiers,
+                    enabled: true
+                };
+
+                // Remove existing submission from this participant and add new one
+                pollData.participants = pollData.participants.filter(p => p.name !== currentParticipant);
+                pollData.participants.push(participantData);
+                await savePollData(pollId, pollData);
+            }
+
+            const pollData = await loadPollData(pollId);
             if (!pollData) {
                 alert('Poll not found');
                 return;
@@ -2090,6 +2402,12 @@
                 return `
                     <div class="section">
                         <h3>${p.name}'s Rankings</h3>
+                        <div class="ranking-header">
+                            <span class="ranking-header-rank">#</span>
+                            <span class="ranking-header-tier">Tier</span>
+                            <span class="ranking-header-entry">Entry</span>
+                            <span class="ranking-header-multiple">Multiple</span>
+                        </div>
                         <ol class="ranking-list">
                             ${rankingWithMultipliers.map((item, idx) => `
                                 <li class="ranking-item">
@@ -2097,7 +2415,6 @@
                                     ${item.tier ? `<span class="tier-badge tier-${item.tier}">${item.tier}</span>` : ''}
                                     <span class="rank-name">${item.option}</span>
                                     <span class="rank-score">
-                                        ${item.rating}
                                         ${item.multiplierText ? `<span class="rank-multiplier">${item.multiplierText}</span>` : ''}
                                     </span>
                                 </li>
@@ -2140,7 +2457,7 @@
             showScreen('shareLinkScreen');
         }
 
-        function deleteParticipant(name) {
+        async function deleteParticipant(name) {
             if (!isAdmin) {
                 alert('Only the poll creator can delete entries');
                 return;
@@ -2150,21 +2467,21 @@
                 return;
             }
 
-            const pollData = JSON.parse(localStorage.getItem(`poll_${pollId}`));
+            const pollData = await loadPollData(pollId);
             pollData.participants = pollData.participants.filter(p => p.name !== name);
-            localStorage.setItem(`poll_${pollId}`, JSON.stringify(pollData));
+            await savePollData(pollId, pollData);
 
             // Refresh results view
             viewResults();
         }
 
-        function editOptions() {
+        async function editOptions() {
             if (!isAdmin) {
                 alert('Only the poll creator can edit options');
                 return;
             }
 
-            const pollData = JSON.parse(localStorage.getItem(`poll_${pollId}`));
+            const pollData = await loadPollData(pollId);
             const currentOptions = pollData.options.join('\n');
             const newOptions = prompt('Edit poll options (one per line):\n\nWarning: Changing options will invalidate existing rankings!', currentOptions);
 
@@ -2187,24 +2504,24 @@
 
             pollData.options = updatedOptions;
             pollData.participants = []; // Clear all rankings
-            localStorage.setItem(`poll_${pollId}`, JSON.stringify(pollData));
+            await savePollData(pollId, pollData);
 
             alert('Options updated! All rankings have been cleared.');
             viewResults();
         }
 
-        function toggleParticipant(name) {
-            const pollData = JSON.parse(localStorage.getItem(`poll_${pollId}`));
+        async function toggleParticipant(name) {
+            const pollData = await loadPollData(pollId);
             const participant = pollData.participants.find(p => p.name === name);
             if (participant) {
                 participant.enabled = !participant.enabled;
-                localStorage.setItem(`poll_${pollId}`, JSON.stringify(pollData));
+                await savePollData(pollId, pollData);
                 updateGroupRanking();
             }
         }
 
-        function updateGroupRanking() {
-            const pollData = JSON.parse(localStorage.getItem(`poll_${pollId}`));
+        async function updateGroupRanking() {
+            const pollData = await loadPollData(pollId);
             const enabledParticipants = pollData.participants.filter(p => p.enabled);
 
             if (enabledParticipants.length === 0) {
