@@ -263,16 +263,23 @@
         }
 
         .ranking-header-tier {
-            min-width: 40px;
+            min-width: 60px;
             margin-right: 10px;
         }
 
         .ranking-header-entry {
-            flex: 1;
+            flex: 2;
+            margin-right: 15px;
         }
 
         .ranking-header-multiple {
-            min-width: 100px;
+            min-width: 80px;
+            text-align: right;
+            margin-right: 15px;
+        }
+
+        .ranking-header-probability {
+            min-width: 80px;
             text-align: right;
         }
 
@@ -297,12 +304,25 @@
         .rank-name {
             font-size: 1.1rem;
             color: #333;
-            flex: 1;
+            flex: 2;
+            margin-right: 15px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         .rank-score {
+            min-width: 80px;
+            text-align: right;
+            margin-right: 15px;
             color: #888;
             font-size: 0.9rem;
+        }
+
+        .rank-probability {
+            min-width: 80px;
+            text-align: right;
+            color: #666;
+            font-size: 0.95rem;
         }
 
         .rank-multiplier {
@@ -618,6 +638,217 @@
         .tier-E { background: #6600cc; color: white; }
         .tier-F { background: #999999; color: white; }
 
+        /* Probability Screen */
+        .probability-container {
+            display: flex;
+            justify-content: center;
+            align-items: stretch;
+            min-height: 600px;
+            margin: 30px 0;
+            gap: 20px;
+        }
+
+        .probability-scale {
+            position: relative;
+            width: 120px;
+            background: linear-gradient(to bottom, #4CAF50 0%, #FFC107 50%, #F44336 100%);
+            border-radius: 10px;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .probability-marker {
+            position: absolute;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: 600;
+            color: #333;
+            font-size: 1rem;
+            text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+        }
+
+        .probability-drop-zone {
+            position: relative;
+            flex: 1;
+            max-width: 1000px;
+            width: 100%;
+            background: #f8f9fa;
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            min-height: 600px;
+        }
+
+        .probability-item {
+            position: absolute;
+            width: 180px;
+            padding: 10px 12px;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            cursor: grab;
+            user-select: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: box-shadow 0.2s;
+            z-index: 1;
+            font-size: 0.9rem;
+        }
+
+        .probability-item:hover {
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .probability-item.dragging {
+            cursor: grabbing;
+            opacity: 0.7;
+            z-index: 1000;
+        }
+
+        .probability-item-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .probability-item-value {
+            font-size: 0.85rem;
+            color: #667eea;
+            margin-top: 4px;
+        }
+
+        /* Chart Screen */
+        .chart-2d-container {
+            display: grid;
+            grid-template-columns: 80px 1fr;
+            grid-template-rows: 1fr 60px 40px;
+            width: 100%;
+            height: calc(100vh - 300px);
+            min-height: 600px;
+            margin: 30px 0;
+            gap: 0;
+        }
+
+        .chart-y-axis {
+            grid-column: 1;
+            grid-row: 1;
+            position: relative;
+            background: linear-gradient(to bottom, #4CAF50 0%, #FFC107 50%, #F44336 100%);
+            border-radius: 10px 0 0 0;
+        }
+
+        .chart-y-label {
+            position: absolute;
+            right: 10px;
+            transform: translateY(-50%);
+            font-weight: 600;
+            color: #333;
+            font-size: 0.9rem;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .chart-plot-area {
+            grid-column: 2;
+            grid-row: 1;
+            position: relative;
+            background: #f8f9fa;
+            border: 2px solid #ddd;
+            border-left: none;
+            background-image:
+                repeating-linear-gradient(0deg, transparent, transparent 16.66%, #e0e0e0 16.66%, #e0e0e0 calc(16.66% + 1px)),
+                repeating-linear-gradient(90deg, transparent, transparent 25%, #e0e0e0 25%, #e0e0e0 calc(25% + 1px));
+        }
+
+        .chart-data-point {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #667eea;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 2;
+            cursor: grab;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .chart-data-point:hover {
+            transform: translate(-50%, -50%) scale(1.3);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .chart-data-point.dragging {
+            cursor: grabbing;
+            transform: translate(-50%, -50%) scale(1.5);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.4);
+            z-index: 100;
+        }
+
+        .chart-data-label {
+            position: absolute;
+            font-size: 0.85rem;
+            background: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid #667eea;
+            white-space: nowrap;
+            z-index: 3;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .chart-data-label.dragging {
+            opacity: 0.8;
+            z-index: 99;
+        }
+
+        .chart-x-axis {
+            grid-column: 2;
+            grid-row: 2;
+            position: relative;
+            background: linear-gradient(to right, #F44336 0%, #FFC107 50%, #4CAF50 100%);
+            border: 2px solid #ddd;
+            border-top: none;
+            border-left: none;
+            border-radius: 0 0 10px 0;
+        }
+
+        .chart-x-label {
+            position: absolute;
+            top: 10px;
+            transform: translateX(-50%);
+            font-weight: 600;
+            color: #333;
+            font-size: 0.9rem;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .chart-x-axis-title {
+            grid-column: 2;
+            grid-row: 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: #333;
+        }
+
+        .chart-y-axis-title {
+            grid-column: 1;
+            grid-row: 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: #333;
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+        }
+
         @media (max-width: 600px) {
             .container {
                 padding: 20px;
@@ -807,55 +1038,100 @@
 
         <!-- Screen 5: Tier Selection -->
         <div id="tierScreen" class="screen">
-            <h1>Assign Tiers</h1>
-            <p class="subtitle">Drag options into tiers (1000x is best, 1/1000 is worst)</p>
+            <h1>Assign Value Tiers</h1>
+            <p class="subtitle">Drag options into tiers (1000x is highest value, 0.001x is lowest)</p>
             <div class="tier-selection" id="tierSelection">
                 <div class="tier-row" data-tier="S">
-                    <div class="tier-header tier-S">1000x of</div>
+                    <div class="tier-header tier-S">1000x</div>
                     <div class="tier-items" id="tier-items-S"></div>
                 </div>
                 <div class="tier-row" data-tier="A">
-                    <div class="tier-header tier-A">100x of</div>
+                    <div class="tier-header tier-A">100x</div>
                     <div class="tier-items" id="tier-items-A"></div>
                 </div>
                 <div class="tier-row" data-tier="B">
-                    <div class="tier-header tier-B">10x of</div>
+                    <div class="tier-header tier-B">10x</div>
                     <div class="tier-items" id="tier-items-B"></div>
                 </div>
                 <div class="tier-row" data-tier="C">
-                    <div class="tier-header tier-C">1x of</div>
+                    <div class="tier-header tier-C">1x</div>
                     <div class="tier-items" id="tier-items-C"></div>
                 </div>
                 <div class="tier-row" data-tier="D">
-                    <div class="tier-header tier-D">1/10 of</div>
+                    <div class="tier-header tier-D">0.1x</div>
                     <div class="tier-items" id="tier-items-D"></div>
                 </div>
                 <div class="tier-row" data-tier="E">
-                    <div class="tier-header tier-E">1/100 of</div>
+                    <div class="tier-header tier-E">0.01x</div>
                     <div class="tier-items" id="tier-items-E"></div>
                 </div>
                 <div class="tier-row" data-tier="F">
-                    <div class="tier-header tier-F">1/1000 of</div>
+                    <div class="tier-header tier-F">0.001x</div>
                     <div class="tier-items" id="tier-items-F"></div>
                 </div>
             </div>
             <div class="button-group">
                 <button class="secondary" onclick="goBackToName()">Back</button>
-                <button id="continueToComparisonsBtn" onclick="continueToComparisons()">Start Comparisons</button>
+                <button id="continueToComparisonsBtn" onclick="continueToComparisons()">Continue</button>
             </div>
             <div id="adminViewResultsFromTier" style="display: none; margin-top: 20px; text-align: center;">
                 <span class="start-over" onclick="viewResults()">View Results (Admin)</span>
             </div>
         </div>
 
-        <!-- Screen 5.5: Tier Verification -->
-        <div id="tierVerificationScreen" class="screen">
-            <h1>Verify Tier Relationships</h1>
-            <p class="subtitle">Confirm these relative values are correct</p>
-            <div id="tierVerificationQuestions"></div>
+        <!-- Screen 5.75: Probability Assignment -->
+        <div id="probabilityScreen" class="screen">
+            <h1>Assign Probabilities</h1>
+            <p class="subtitle">Counterfactual additional chance by Nathan working on it for 18 months</p>
+            <p class="help-text">Drag options vertically to set their probability (100% = certain, 0% = impossible). Horizontal position doesn't matter.</p>
+            <div class="probability-container">
+                <div class="probability-scale">
+                    <div class="probability-marker" style="top: 0%">100%</div>
+                    <div class="probability-marker" style="top: 25%">75%</div>
+                    <div class="probability-marker" style="top: 50%">50%</div>
+                    <div class="probability-marker" style="top: 75%">25%</div>
+                    <div class="probability-marker" style="top: 100%">0%</div>
+                </div>
+                <div class="probability-drop-zone" id="probabilityDropZone">
+                    <!-- Items will be added here -->
+                </div>
+            </div>
             <div class="button-group">
-                <button class="secondary" onclick="backToTiersFromVerification()">Back to Tiers</button>
-                <button onclick="continueToComparisons()">Looks Good - Start Comparisons</button>
+                <button class="secondary" onclick="backToComparison()">Back</button>
+                <button onclick="goToChartView()">View Chart</button>
+            </div>
+        </div>
+
+        <!-- Screen 5.9: 2D Chart View -->
+        <div id="chartScreen" class="screen">
+            <h1>Value × Probability Chart</h1>
+            <p class="subtitle">Visual representation of your rankings</p>
+            <div class="chart-2d-container">
+                <div class="chart-y-axis">
+                    <div class="chart-y-label" style="top: 0%">1000x</div>
+                    <div class="chart-y-label" style="top: 16.67%">100x</div>
+                    <div class="chart-y-label" style="top: 33.33%">10x</div>
+                    <div class="chart-y-label" style="top: 50%">1x</div>
+                    <div class="chart-y-label" style="top: 66.67%">0.1x</div>
+                    <div class="chart-y-label" style="top: 83.33%">0.01x</div>
+                    <div class="chart-y-label" style="top: 100%">0.001x</div>
+                </div>
+                <div class="chart-plot-area" id="chartPlotArea">
+                    <!-- Data points will be added here -->
+                </div>
+                <div class="chart-x-axis">
+                    <div class="chart-x-label" style="left: 0%">0%</div>
+                    <div class="chart-x-label" style="left: 25%">25%</div>
+                    <div class="chart-x-label" style="left: 50%">50%</div>
+                    <div class="chart-x-label" style="left: 75%">75%</div>
+                    <div class="chart-x-label" style="left: 100%">100%</div>
+                </div>
+                <div class="chart-x-axis-title">Probability</div>
+                <div class="chart-y-axis-title">Value Tier</div>
+            </div>
+            <div class="button-group">
+                <button class="secondary" onclick="backToProbability()">Back</button>
+                <button onclick="finishRanking()">Finish</button>
             </div>
         </div>
 
@@ -897,7 +1173,7 @@
             </div>
             <div class="button-group">
                 <button class="secondary" onclick="skipComparison()">Skip This Pair</button>
-                <button class="secondary" onclick="backToTiers()">Adjust Tiers</button>
+                <button onclick="goToProbabilityFromComparison()">Continue to Probability</button>
             </div>
             <div id="adminViewResultsFromComparison" style="display: none; margin-top: 20px; text-align: center;">
                 <span class="start-over" onclick="viewResults()">View Results (Admin)</span>
@@ -928,6 +1204,7 @@
                     <span class="ranking-header-tier">Tier</span>
                     <span class="ranking-header-entry">Entry</span>
                     <span class="ranking-header-multiple">Multiple</span>
+                    <span class="ranking-header-probability">Avg Prob</span>
                 </div>
                 <ol class="ranking-list" id="groupRanking"></ol>
             </div>
@@ -1053,6 +1330,7 @@
         let tiers = {}; // Maps option index to tier (S, A, B, C, D, E, F)
         let manualTiers = {}; // Tracks which option tiers have been manually set (to prevent auto-reassignment)
         let currentTier = null;
+        let probabilities = {}; // Maps option index to probability (0.0 to 1.0)
 
         // Data migration system
         function migrateData() {
@@ -1159,18 +1437,20 @@
 
             // Sort polls by most recent first (based on participants)
             polls.sort((a, b) => {
-                const aTime = a.data.participants.length > 0 ?
-                    new Date(a.data.participants[a.data.participants.length - 1].timestamp || 0) :
-                    new Date(0);
-                const bTime = b.data.participants.length > 0 ?
-                    new Date(b.data.participants[b.data.participants.length - 1].timestamp || 0) :
-                    new Date(0);
+                const aParticipants = a.data.participants || [];
+                const bParticipants = b.data.participants || [];
+                const aTime = aParticipants.length > 0 ?
+                    new Date(aParticipants[aParticipants.length - 1].timestamp || 0) :
+                    new Date(a.data.created || 0);
+                const bTime = bParticipants.length > 0 ?
+                    new Date(bParticipants[bParticipants.length - 1].timestamp || 0) :
+                    new Date(b.data.created || 0);
                 return bTime - aTime;
             });
 
             // Build HTML for polls list
             pollsContainer.innerHTML = polls.map(poll => {
-                const participantCount = poll.data.participants.length;
+                const participantCount = (poll.data.participants || []).length;
                 const optionCount = poll.data.options.length;
                 const firstOption = poll.data.options[0] || 'Untitled Poll';
                 const pollTitle = optionCount > 1 ?
@@ -1212,6 +1492,7 @@
         }
 
         function startAsOrganizer() {
+            console.log('startAsOrganizer called');
             isOrganizer = true;
             showScreen('setupScreen');
         }
@@ -1570,6 +1851,263 @@
 
         function continueToComparisons() {
             // Save tier configuration before starting comparisons
+            saveProgress();
+
+            // Keep existing comparisons if any exist
+            const hasExistingComparisons = comparisons && comparisons.length > 0;
+            startComparisons(!hasExistingComparisons);
+        }
+
+        // Probability Screen Functions
+        function skipToProbability() {
+            // Skip verification and go straight to probability
+            saveProgress();
+            goToProbabilityScreen();
+        }
+
+        function goToProbabilityFromComparison() {
+            // Go to probability from comparison screen
+            saveProgress();
+            goToProbabilityScreen();
+        }
+
+        function goToProbabilityScreen() {
+            // Initialize probabilities if not set - default to 50%
+            if (Object.keys(probabilities).length === 0) {
+                options.forEach((_, idx) => {
+                    probabilities[idx] = 0.5; // Default to 50%
+                });
+            }
+
+            // Populate the probability drop zone
+            const dropZone = document.getElementById('probabilityDropZone');
+            const containerWidth = 900; // Approximate usable width
+            const itemWidth = 180;
+            const itemsPerRow = Math.floor(containerWidth / (itemWidth + 20)); // 20px spacing
+
+            dropZone.innerHTML = options.map((option, idx) => {
+                const probability = probabilities[idx] || 0.5;
+                const topPercent = (1 - probability) * 100; // Invert: 100% at top, 0% at bottom
+
+                // Spread items horizontally to avoid overlap
+                const column = idx % itemsPerRow;
+                const leftPos = 20 + (column * (itemWidth + 20));
+
+                return `
+                    <div class="probability-item" data-option-idx="${idx}" style="top: ${topPercent}%; left: ${leftPos}px;">
+                        <div class="probability-item-name">${option}</div>
+                        <div class="probability-item-value">${Math.round(probability * 100)}%</div>
+                    </div>
+                `;
+            }).join('');
+
+            setupProbabilityDragAndDrop();
+            showScreen('probabilityScreen');
+        }
+
+        function setupProbabilityDragAndDrop() {
+            const dropZone = document.getElementById('probabilityDropZone');
+            let draggedElement = null;
+            let startX = 0;
+            let startY = 0;
+            let startLeft = 0;
+            let startTop = 0;
+
+            document.querySelectorAll('.probability-item').forEach(item => {
+                item.addEventListener('mousedown', (e) => {
+                    draggedElement = item;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    const style = window.getComputedStyle(item);
+                    startLeft = parseInt(style.left);
+                    startTop = parseInt(style.top);
+                    item.classList.add('dragging');
+                    e.preventDefault();
+                });
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!draggedElement) return;
+
+                const deltaX = e.clientX - startX;
+                const deltaY = e.clientY - startY;
+                const newLeft = startLeft + deltaX;
+                const newTop = startTop + deltaY;
+                const containerHeight = dropZone.clientHeight;
+                const containerWidth = dropZone.clientWidth;
+                const itemHeight = draggedElement.clientHeight;
+                const itemWidth = draggedElement.clientWidth;
+
+                // Constrain to container bounds (both X and Y)
+                const clampedLeft = Math.max(0, Math.min(newLeft, containerWidth - itemWidth));
+                const clampedTop = Math.max(0, Math.min(newTop, containerHeight - itemHeight));
+
+                draggedElement.style.left = clampedLeft + 'px';
+                draggedElement.style.top = clampedTop + 'px';
+
+                // Update probability based on vertical position only (inverted: top = 100%, bottom = 0%)
+                const probability = 1 - (clampedTop / (containerHeight - itemHeight));
+                const optionIdx = draggedElement.dataset.optionIdx;
+                probabilities[optionIdx] = probability;
+
+                // Update display
+                const valueDiv = draggedElement.querySelector('.probability-item-value');
+                valueDiv.textContent = Math.round(probability * 100) + '%';
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (draggedElement) {
+                    draggedElement.classList.remove('dragging');
+                    draggedElement = null;
+                }
+            });
+        }
+
+        function backToVerification() {
+            showScreen('tierVerificationScreen');
+        }
+
+        function backToProbability() {
+            goToProbabilityScreen();
+        }
+
+        function backToComparison() {
+            showScreen('comparisonScreen');
+        }
+
+        function finishRanking() {
+            saveProgress();
+            if (isOrganizer) {
+                showScreen('shareLinkScreen');
+            } else {
+                saveParticipantData();
+                showScreen('thankYouScreen');
+            }
+        }
+
+        function goToChartView() {
+            saveProgress();
+            renderChart();
+            showScreen('chartScreen');
+        }
+
+        function renderChart() {
+            const plotArea = document.getElementById('chartPlotArea');
+            plotArea.innerHTML = '';
+            const tierOrder = ['S', 'A', 'B', 'C', 'D', 'E', 'F'];
+            for (let idx = 0; idx < options.length; idx++) {
+                const option = options[idx];
+                const tier = tiers[idx] || 'C';
+                const probability = probabilities[idx] || 0.5;
+                const tierIndex = tierOrder.indexOf(tier);
+                const xPercent = probability * 100;
+                const yPercent = (tierIndex / 6) * 100;
+                const point = document.createElement('div');
+                point.className = 'chart-data-point';
+                point.style.left = xPercent + '%';
+                point.style.top = yPercent + '%';
+                point.title = option;
+                point.dataset.optionIdx = idx;
+                const label = document.createElement('div');
+                label.className = 'chart-data-label';
+                label.textContent = option.length > 30 ? (option.substring(0, 27) + '...') : option;
+                label.dataset.optionIdx = idx;
+                let labelLeft = xPercent + 2;
+                let labelTop = yPercent;
+                if (labelLeft > 70) {
+                    labelLeft = xPercent - 2;
+                    label.style.transform = 'translate(-100%, -50%)';
+                } else {
+                    label.style.transform = 'translate(0, -50%)';
+                }
+                label.style.left = labelLeft + '%';
+                label.style.top = labelTop + '%';
+                plotArea.appendChild(point);
+                plotArea.appendChild(label);
+            }
+            setupChartDragAndDrop();
+        }
+
+        function setupChartDragAndDrop() {
+            const plotArea = document.getElementById('chartPlotArea');
+            const tierOrder = ['S', 'A', 'B', 'C', 'D', 'E', 'F'];
+            let draggedElement = null;
+            let draggedLabel = null;
+            let startX = 0;
+            let startY = 0;
+            let startLeft = 0;
+            let startTop = 0;
+
+            document.querySelectorAll('.chart-data-point').forEach(point => {
+                point.addEventListener('mousedown', (e) => {
+                    draggedElement = point;
+                    const optionIdx = point.dataset.optionIdx;
+                    draggedLabel = plotArea.querySelector('.chart-data-label[data-option-idx="' + optionIdx + '"]');
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    const style = window.getComputedStyle(point);
+                    startLeft = parseFloat(style.left);
+                    startTop = parseFloat(style.top);
+                    point.classList.add('dragging');
+                    if (draggedLabel) draggedLabel.classList.add('dragging');
+                    e.preventDefault();
+                });
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!draggedElement) return;
+                const containerRect = plotArea.getBoundingClientRect();
+                const deltaX = e.clientX - startX;
+                const deltaY = e.clientY - startY;
+                const newLeftPx = startLeft + deltaX;
+                const newTopPx = startTop + deltaY;
+                const newLeftPercent = (newLeftPx / containerRect.width) * 100;
+                const newTopPercent = (newTopPx / containerRect.height) * 100;
+                const clampedLeft = Math.max(0, Math.min(100, newLeftPercent));
+                const clampedTop = Math.max(0, Math.min(100, newTopPercent));
+                draggedElement.style.left = clampedLeft + '%';
+                draggedElement.style.top = clampedTop + '%';
+                const probability = clampedLeft / 100;
+                const tierIndexFloat = (clampedTop / 100) * 6;
+                const tierIndex = Math.round(tierIndexFloat);
+                const clampedTierIndex = Math.max(0, Math.min(6, tierIndex));
+                const optionIdx = draggedElement.dataset.optionIdx;
+                probabilities[optionIdx] = probability;
+                tiers[optionIdx] = tierOrder[clampedTierIndex];
+                if (draggedLabel) {
+                    const labelLeftPercent = clampedLeft + 2;
+                    if (labelLeftPercent > 70) {
+                        draggedLabel.style.left = (clampedLeft - 2) + '%';
+                        draggedLabel.style.transform = 'translate(-100%, -50%)';
+                    } else {
+                        draggedLabel.style.left = labelLeftPercent + '%';
+                        draggedLabel.style.transform = 'translate(0, -50%)';
+                    }
+                    draggedLabel.style.top = clampedTop + '%';
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (draggedElement) {
+                    draggedElement.classList.remove('dragging');
+                    if (draggedLabel) draggedLabel.classList.remove('dragging');
+                    saveProgress();
+                    draggedElement = null;
+                    draggedLabel = null;
+                }
+            });
+        }
+
+        function skipProbability() {
+            // Set all probabilities to 50% (neutral)
+            options.forEach((_, idx) => {
+                probabilities[idx] = 0.5;
+            });
+            continueToProbabilityComparisons();
+        }
+
+        function continueToProbabilityComparisons() {
+            // Save both tier and probability data
             saveProgress();
 
             // Keep existing comparisons if any exist
@@ -2003,6 +2541,7 @@
                 participant: currentParticipant,
                 tiers: tiers,
                 manualTiers: manualTiers,
+                probabilities: probabilities,
                 comparisons: comparisons,
                 drawnPairs: drawnPairs,
                 timestamp: new Date().toISOString()
@@ -2048,6 +2587,7 @@
                 comparisons: comparisons,
                 ranking: ranking,
                 tiers: finalTiers,
+                probabilities: probabilities,
                 enabled: true
             };
 
@@ -2066,6 +2606,7 @@
                 const progressData = JSON.parse(savedProgress);
                 tiers = progressData.tiers;
                 manualTiers = progressData.manualTiers || {};
+                probabilities = progressData.probabilities || {};
                 comparisons = progressData.comparisons || [];
                 drawnPairs = progressData.drawnPairs || [];
                 return true;
@@ -2216,6 +2757,19 @@
             calculateResults();
         }
 
+        function getTierLabel(tierLetter) {
+            const tierMap = {
+                'S': '1000x',
+                'A': '100x',
+                'B': '10x',
+                'C': '1x',
+                'D': '0.1x',
+                'E': '0.01x',
+                'F': '0.001x'
+            };
+            return tierMap[tierLetter] || tierLetter;
+        }
+
         function calculateRelativeMultipliers(rankings) {
             // Calculate multipliers relative to the lowest ranked item
             if (rankings.length === 0) return rankings;
@@ -2245,7 +2799,8 @@
                 return {
                     ...item,
                     multiplier: multiplier,
-                    multiplierText: multiplierText
+                    multiplierText: multiplierText,
+                    tierLabel: getTierLabel(item.tier)
                 };
             });
         }
@@ -2323,7 +2878,7 @@
             thankYouList.innerHTML = rankingWithMultipliers.map((item, idx) => `
                 <li class="ranking-item">
                     <span class="rank-number">${idx + 1}</span>
-                    <span class="tier-badge tier-${item.tier}">${item.tier}</span>
+                    <span class="tier-badge tier-${item.tier}">${item.tierLabel || getTierLabel(item.tier)}</span>
                     <span class="rank-name">${item.option}</span>
                     <span class="rank-score">
                         ${item.rating}
@@ -2407,18 +2962,24 @@
                             <span class="ranking-header-tier">Tier</span>
                             <span class="ranking-header-entry">Entry</span>
                             <span class="ranking-header-multiple">Multiple</span>
+                            <span class="ranking-header-probability">Probability</span>
                         </div>
                         <ol class="ranking-list">
-                            ${rankingWithMultipliers.map((item, idx) => `
+                            ${rankingWithMultipliers.map((item, idx) => {
+                                const probability = p.probabilities && p.probabilities[options.indexOf(item.option)];
+                                const probabilityText = probability !== undefined ? Math.round(probability * 100) + '%' : '-';
+                                return `
                                 <li class="ranking-item">
                                     <span class="rank-number">${idx + 1}</span>
-                                    ${item.tier ? `<span class="tier-badge tier-${item.tier}">${item.tier}</span>` : ''}
+                                    ${item.tier ? `<span class="tier-badge tier-${item.tier}">${item.tierLabel || getTierLabel(item.tier)}</span>` : ''}
                                     <span class="rank-name">${item.option}</span>
                                     <span class="rank-score">
                                         ${item.multiplierText ? `<span class="rank-multiplier">${item.multiplierText}</span>` : ''}
                                     </span>
+                                    <span class="rank-probability">${probabilityText}</span>
                                 </li>
-                            `).join('')}
+                                `;
+                            }).join('')}
                         </ol>
                     </div>
                 `;
@@ -2530,10 +3091,10 @@
                 return;
             }
 
-            // Average rankings and tiers across participants
+            // Average rankings, tiers, and probabilities across participants
             const aggregateData = {};
             options.forEach(option => {
-                aggregateData[option] = { totalRating: 0, tiers: [] };
+                aggregateData[option] = { totalRating: 0, tiers: [], probabilities: [] };
             });
 
             enabledParticipants.forEach(p => {
@@ -2543,6 +3104,13 @@
                         aggregateData[item.option].tiers.push(item.tier);
                     }
                 });
+                if (p.probabilities) {
+                    options.forEach((option, idx) => {
+                        if (p.probabilities[idx] !== undefined) {
+                            aggregateData[option].probabilities.push(p.probabilities[idx]);
+                        }
+                    });
+                }
             });
 
             const groupRanking = Object.entries(aggregateData)
@@ -2552,10 +3120,16 @@
                     data.tiers.forEach(t => tierCounts[t] = (tierCounts[t] || 0) + 1);
                     const mostCommonTier = Object.keys(tierCounts).sort((a, b) => tierCounts[b] - tierCounts[a])[0] || 'C';
 
+                    // Calculate average probability
+                    const avgProbability = data.probabilities.length > 0
+                        ? data.probabilities.reduce((sum, p) => sum + p, 0) / data.probabilities.length
+                        : null;
+
                     return {
                         option,
                         rating: Math.round(data.totalRating / enabledParticipants.length),
-                        tier: mostCommonTier
+                        tier: mostCommonTier,
+                        avgProbability: avgProbability
                     };
                 })
                 .sort((a, b) => b.rating - a.rating);
@@ -2563,17 +3137,22 @@
             const groupRankingWithMultipliers = calculateRelativeMultipliers(groupRanking);
 
             const groupList = document.getElementById('groupRanking');
-            groupList.innerHTML = groupRankingWithMultipliers.map((item, idx) => `
+            groupList.innerHTML = groupRankingWithMultipliers.map((item, idx) => {
+                const probabilityText = item.avgProbability !== null && item.avgProbability !== undefined
+                    ? Math.round(item.avgProbability * 100) + '%'
+                    : '-';
+                return `
                 <li class="ranking-item">
                     <span class="rank-number">${idx + 1}</span>
-                    ${item.tier ? `<span class="tier-badge tier-${item.tier}">${item.tier}</span>` : ''}
+                    ${item.tier ? `<span class="tier-badge tier-${item.tier}">${item.tierLabel || getTierLabel(item.tier)}</span>` : ''}
                     <span class="rank-name">${item.option}</span>
                     <span class="rank-score">
-                        Avg: ${item.rating} (${enabledParticipants.length} ${enabledParticipants.length === 1 ? 'person' : 'people'})
                         ${item.multiplierText ? `<span class="rank-multiplier">${item.multiplierText}</span>` : ''}
                     </span>
+                    <span class="rank-probability">${probabilityText}</span>
                 </li>
-            `).join('');
+                `;
+            }).join('');
         }
 
         function exportData() {
