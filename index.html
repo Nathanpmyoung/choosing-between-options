@@ -621,6 +621,15 @@
             border-radius: 5px;
         }
 
+        .tier-label {
+            display: inline-block;
+            min-width: 60px;
+            text-align: center;
+            font-weight: 600;
+            color: #667eea;
+            font-size: 0.95rem;
+        }
+
         .tier-badge {
             display: inline-block;
             padding: 5px 12px;
@@ -1172,6 +1181,7 @@
                 </div>
             </div>
             <div class="button-group">
+                <button class="secondary" onclick="backToTiers()">Back to Tiers</button>
                 <button class="secondary" onclick="skipComparison()">Skip This Pair</button>
                 <button onclick="goToProbabilityFromComparison()">Continue to Probability</button>
             </div>
@@ -1978,6 +1988,8 @@
         function finishRanking() {
             saveProgress();
             if (isOrganizer) {
+                const shareUrl = `${window.location.origin}${window.location.pathname}?poll=${pollId}`;
+                document.getElementById('shareLinkInput').value = shareUrl;
                 showScreen('shareLinkScreen');
             } else {
                 saveParticipantData();
@@ -2878,11 +2890,10 @@
             thankYouList.innerHTML = rankingWithMultipliers.map((item, idx) => `
                 <li class="ranking-item">
                     <span class="rank-number">${idx + 1}</span>
-                    <span class="tier-badge tier-${item.tier}">${item.tierLabel || getTierLabel(item.tier)}</span>
+                    <span class="tier-label">${item.tierLabel || getTierLabel(item.tier)}</span>
                     <span class="rank-name">${item.option}</span>
                     <span class="rank-score">
-                        ${item.rating}
-                        ${item.multiplierText ? `<span class="rank-multiplier">${item.multiplierText}</span>` : ''}
+                        ${item.multiplierText || ''}
                     </span>
                 </li>
             `).join('');
@@ -2971,10 +2982,10 @@
                                 return `
                                 <li class="ranking-item">
                                     <span class="rank-number">${idx + 1}</span>
-                                    ${item.tier ? `<span class="tier-badge tier-${item.tier}">${item.tierLabel || getTierLabel(item.tier)}</span>` : ''}
+                                    <span class="tier-label">${item.tierLabel || getTierLabel(item.tier)}</span>
                                     <span class="rank-name">${item.option}</span>
                                     <span class="rank-score">
-                                        ${item.multiplierText ? `<span class="rank-multiplier">${item.multiplierText}</span>` : ''}
+                                        ${item.multiplierText || ''}
                                     </span>
                                     <span class="rank-probability">${probabilityText}</span>
                                 </li>
@@ -3144,10 +3155,10 @@
                 return `
                 <li class="ranking-item">
                     <span class="rank-number">${idx + 1}</span>
-                    ${item.tier ? `<span class="tier-badge tier-${item.tier}">${item.tierLabel || getTierLabel(item.tier)}</span>` : ''}
+                    <span class="tier-label">${item.tierLabel || getTierLabel(item.tier)}</span>
                     <span class="rank-name">${item.option}</span>
                     <span class="rank-score">
-                        ${item.multiplierText ? `<span class="rank-multiplier">${item.multiplierText}</span>` : ''}
+                        ${item.multiplierText || ''}
                     </span>
                     <span class="rank-probability">${probabilityText}</span>
                 </li>
