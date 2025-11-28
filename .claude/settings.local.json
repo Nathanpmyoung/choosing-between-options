@@ -1,7 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git init:*)"
+      "Bash(git init:*)",
+      "Bash(open:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(cat:*)",
+      "Bash(node list-polls.js:*)",
+      "Bash(node admin-scripts/list-polls.js:*)",
+      "Bash(git revert:*)"
     ],
     "deny": [],
     "ask": []

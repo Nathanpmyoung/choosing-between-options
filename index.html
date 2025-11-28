@@ -1689,7 +1689,7 @@
                     showComparison();
                 } else if (tiers.length > 0) {
                     // Has tiers but no comparisons - go to tier screen
-                    setupTierSelection();
+                    populateTiersWithConfidence();
                     showScreen('tierScreen');
                 } else {
                     // No progress, start fresh
