@@ -1111,7 +1111,43 @@
             </div>
             <div class="button-group">
                 <button class="secondary" onclick="backToComparison()">Back</button>
-                <button onclick="goToChartView()">View Chart</button>
+                <button onclick="startProbabilityComparisons()">Continue</button>
+            </div>
+        </div>
+
+        <!-- Screen 5.8: Probability Comparisons -->
+        <div id="probabilityComparisonScreen" class="screen">
+            <h1>Refine Probabilities</h1>
+            <p class="subtitle">Which is more likely to happen as a result of Nathan working on it for 18 months?</p>
+            <p class="help-text">Counterfactual additional percentage points</p>
+
+            <div class="comparison-container">
+                <div class="comparison-progress">
+                    <span id="probComparisonCount">0</span> probability comparisons made
+                    <span id="probComparisonConfidence" class="confidence-indicator-text"></span>
+                </div>
+
+                <div class="comparison-options">
+                    <button class="comparison-choice comparison-choice-left" id="probChoiceA" onclick="chooseProbabilityWinner('A')">
+                        <span class="choice-label">A</span>
+                        <span class="choice-text" id="probOptionA"></span>
+                    </button>
+
+                    <div class="comparison-middle">
+                        <div class="vs-text">VS</div>
+                    </div>
+
+                    <button class="comparison-choice comparison-choice-right" id="probChoiceB" onclick="chooseProbabilityWinner('B')">
+                        <span class="choice-label">B</span>
+                        <span class="choice-text" id="probOptionB"></span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="secondary" onclick="backToProbabilityDragDrop()">Back to Probability</button>
+                <button class="secondary" onclick="skipProbabilityComparison()">Skip This Pair</button>
+                <button onclick="goToChartView()">See Final Chart</button>
             </div>
         </div>
 
@@ -1358,6 +1394,10 @@
         // Chart viewing state
         let chartParticipants = []; // Array of all participants for chart viewing
         let currentChartIndex = 0; // Current participant being viewed in chart
+
+        // Probability comparison state
+        let probabilityComparisons = []; // Array of {winner, loser} for probability comparisons
+        let drawnProbabilityPairs = []; // Pairs marked as equal probability
 
         // Data migration system
         function migrateData() {
@@ -2480,6 +2520,160 @@
             startComparisons(!hasExistingComparisons);
         }
 
+        // Probability Comparison Functions
+        function startProbabilityComparisons() {
+            saveProgress();
+            showProbabilityComparison();
+            showScreen('probabilityComparisonScreen');
+        }
+
+        function showProbabilityComparison() {
+            // Use adaptive selection based on uncertainty
+            const pair = getNextAdaptiveProbabilityComparison();
+
+            if (!pair) {
+                // No more useful comparisons
+                goToChartView();
+                return;
+            }
+
+            const [indexA, indexB] = pair;
+            document.getElementById('probOptionA').textContent = options[indexA];
+            document.getElementById('probOptionB').textContent = options[indexB];
+            document.getElementById('probChoiceA').dataset.optionIdx = indexA;
+            document.getElementById('probChoiceB').dataset.optionIdx = indexB;
+
+            // Update progress display
+            document.getElementById('probComparisonCount').textContent = probabilityComparisons.length;
+        }
+
+        function chooseProbabilityWinner(choice) {
+            const choiceA = document.getElementById('probChoiceA');
+            const choiceB = document.getElementById('probChoiceB');
+            const indexA = parseInt(choiceA.dataset.optionIdx);
+            const indexB = parseInt(choiceB.dataset.optionIdx);
+
+            if (choice === 'A') {
+                probabilityComparisons.push({ winner: indexA, loser: indexB });
+            } else {
+                probabilityComparisons.push({ winner: indexB, loser: indexA });
+            }
+
+            // Refine probabilities using Bradley-Terry
+            refineProbabilities();
+            saveProgress();
+            showProbabilityComparison();
+        }
+
+        function skipProbabilityComparison() {
+            showProbabilityComparison();
+        }
+
+        function backToProbabilityDragDrop() {
+            goToProbabilityScreen();
+        }
+
+        function getNextAdaptiveProbabilityComparison() {
+            // Similar to impact comparisons, but for probabilities
+            // Use uncertainty to select most informative pairs
+
+            if (probabilityComparisons.length >= options.length * 2) {
+                // Enough comparisons done
+                return null;
+            }
+
+            // Calculate current uncertainties
+            const uncertainties = computeProbabilityUncertainties();
+
+            // Find pair with highest combined uncertainty
+            let bestPair = null;
+            let maxUncertainty = -1;
+
+            for (let i = 0; i < options.length; i++) {
+                for (let j = i + 1; j < options.length; j++) {
+                    // Check if already compared
+                    const alreadyCompared = probabilityComparisons.some(c =>
+                        (c.winner === i && c.loser === j) || (c.winner === j && c.loser === i)
+                    );
+
+                    if (!alreadyCompared) {
+                        const combinedUncertainty = uncertainties[i] + uncertainties[j];
+                        if (combinedUncertainty > maxUncertainty) {
+                            maxUncertainty = combinedUncertainty;
+                            bestPair = [i, j];
+                        }
+                    }
+                }
+            }
+
+            return bestPair;
+        }
+
+        function computeProbabilityUncertainties() {
+            // Simple heuristic: more comparisons = lower uncertainty
+            const comparisonCounts = new Array(options.length).fill(0);
+
+            probabilityComparisons.forEach(({ winner, loser }) => {
+                comparisonCounts[winner]++;
+                comparisonCounts[loser]++;
+            });
+
+            // Convert to uncertainty (inverse of comparison count)
+            return comparisonCounts.map(count => 1 / (count + 1));
+        }
+
+        function refineProbabilities() {
+            // Use Bradley-Terry to refine probabilities based on comparisons
+            // Initialize with current drag-and-drop probabilities
+            let currentProbs = options.map((_, idx) => probabilities[idx] || 0.5);
+
+            if (probabilityComparisons.length === 0) {
+                return;
+            }
+
+            // Run Bradley-Terry iterations
+            const maxIterations = 100;
+            const tolerance = 0.001;
+
+            for (let iter = 0; iter < maxIterations; iter++) {
+                const newProbs = [...currentProbs];
+                let maxChange = 0;
+
+                options.forEach((_, i) => {
+                    let wins = 0;
+                    let total = 0;
+
+                    probabilityComparisons.forEach(({ winner, loser }) => {
+                        if (winner === i) {
+                            wins++;
+                            total++;
+                        } else if (loser === i) {
+                            total++;
+                        }
+                    });
+
+                    if (total > 0) {
+                        // Simple Bradley-Terry update: win rate
+                        const winRate = wins / total;
+                        // Blend with current probability (weighted update)
+                        newProbs[i] = 0.7 * winRate + 0.3 * currentProbs[i];
+                        maxChange = Math.max(maxChange, Math.abs(newProbs[i] - currentProbs[i]));
+                    }
+                });
+
+                currentProbs = newProbs;
+
+                if (maxChange < tolerance) {
+                    break;
+                }
+            }
+
+            // Update probabilities object
+            currentProbs.forEach((prob, idx) => {
+                probabilities[idx] = Math.max(0, Math.min(1, prob));
+            });
+        }
+
         function computeBradleyTerryPrices(initialPrices, comparisons, tiers, manualTiers = {}) {
             // Tier placements set the base prices
             // Use ALL comparisons to refine prices freely
@@ -2909,6 +3103,8 @@
                 probabilities: probabilities,
                 comparisons: comparisons,
                 drawnPairs: drawnPairs,
+                probabilityComparisons: probabilityComparisons,
+                drawnProbabilityPairs: drawnProbabilityPairs,
                 timestamp: new Date().toISOString()
             };
             localStorage.setItem(progressKey, JSON.stringify(progressData));
@@ -2977,6 +3173,8 @@
                 probabilities = progressData.probabilities || {};
                 comparisons = progressData.comparisons || [];
                 drawnPairs = progressData.drawnPairs || [];
+                probabilityComparisons = progressData.probabilityComparisons || [];
+                drawnProbabilityPairs = progressData.drawnProbabilityPairs || [];
                 return true;
             }
             return false;
