@@ -1118,7 +1118,15 @@
         <!-- Screen 5.9: 2D Chart View -->
         <div id="chartScreen" class="screen">
             <h1>Value × Probability Chart</h1>
-            <p class="subtitle">Visual representation of your rankings</p>
+            <p class="subtitle" id="chartSubtitle">Visual representation of your rankings</p>
+
+            <!-- Participant selector for results view -->
+            <div id="chartParticipantSelector" style="display: none; margin-bottom: 20px; text-align: center;">
+                <button class="secondary" onclick="previousChartParticipant()" style="margin-right: 10px;">← Previous</button>
+                <span id="chartParticipantName" style="font-weight: bold; margin: 0 20px;"></span>
+                <button class="secondary" onclick="nextChartParticipant()" style="margin-left: 10px;">Next →</button>
+            </div>
+
             <div class="chart-2d-container">
                 <div class="chart-y-axis">
                     <div class="chart-y-label" style="top: 0%">1000x</div>
@@ -1237,6 +1245,7 @@
             </div>
 
             <div class="button-group">
+                <button onclick="viewAllCharts()">View Charts</button>
                 <button class="secondary" onclick="exportData()">Export Data</button>
                 <button id="editOptionsBtn" style="display: none;" class="edit-options-btn" onclick="editOptions()">Edit Options</button>
                 <button id="backToShareBtn" style="display: none;" class="secondary" onclick="backToShareLink()">Back to Share Link</button>
@@ -1345,6 +1354,10 @@
         let manualTiers = {}; // Tracks which option tiers have been manually set (to prevent auto-reassignment)
         let currentTier = null;
         let probabilities = {}; // Maps option index to probability (0.0 to 1.0)
+
+        // Chart viewing state
+        let chartParticipants = []; // Array of all participants for chart viewing
+        let currentChartIndex = 0; // Current participant being viewed in chart
 
         // Data migration system
         function migrateData() {
@@ -2058,8 +2071,59 @@
 
         function goToChartView() {
             saveProgress();
+            // Hide participant selector (for individual participant view)
+            document.getElementById('chartParticipantSelector').style.display = 'none';
             renderChart();
             showScreen('chartScreen');
+        }
+
+        async function viewAllCharts() {
+            // Load poll data and set up chart viewing
+            const pollData = await loadPollData(pollId);
+            if (!pollData || pollData.participants.length === 0) {
+                alert('No participant data to display');
+                return;
+            }
+
+            // Add "Group Consensus" as first option, then all participants
+            chartParticipants = [
+                { name: 'Group Consensus (Median)', isGroup: true },
+                ...pollData.participants.filter(p => p.enabled)
+            ];
+            currentChartIndex = 0;
+
+            // Show participant selector
+            document.getElementById('chartParticipantSelector').style.display = 'block';
+
+            renderCurrentChart();
+            showScreen('chartScreen');
+        }
+
+        function previousChartParticipant() {
+            currentChartIndex--;
+            if (currentChartIndex < 0) {
+                currentChartIndex = chartParticipants.length - 1;
+            }
+            renderCurrentChart();
+        }
+
+        function nextChartParticipant() {
+            currentChartIndex++;
+            if (currentChartIndex >= chartParticipants.length) {
+                currentChartIndex = 0;
+            }
+            renderCurrentChart();
+        }
+
+        async function renderCurrentChart() {
+            const participant = chartParticipants[currentChartIndex];
+            document.getElementById('chartParticipantName').textContent = participant.name;
+
+            if (participant.isGroup) {
+                await renderGroupChart();
+            } else {
+                renderParticipantChart(participant);
+            }
         }
 
         function renderChart() {
@@ -2225,6 +2289,174 @@
                     draggedElement = null;
                     draggedLabel = null;
                 }
+            });
+        }
+
+        async function renderGroupChart() {
+            // Calculate median multipliers and probabilities across all enabled participants
+            const plotArea = document.getElementById('chartPlotArea');
+            plotArea.innerHTML = '';
+
+            const pollData = await loadPollData(pollId);
+            const enabledParticipants = pollData.participants.filter(p => p.enabled);
+
+            if (enabledParticipants.length === 0) {
+                plotArea.innerHTML = '<div style="text-align: center; padding: 50px; color: #666;">No participants selected</div>';
+                return;
+            }
+
+            // For each option, collect all multipliers and probabilities
+            const tierBasePrices = {
+                S: 1000000, A: 100000, B: 10000, C: 1000, D: 100, E: 10, F: 1
+            };
+
+            const minLog = Math.log10(0.001);
+            const maxLog = Math.log10(1000);
+            const logRange = maxLog - minLog;
+
+            options.forEach((option, optionIdx) => {
+                const multipliers = [];
+                const probs = [];
+
+                enabledParticipants.forEach(p => {
+                    // Calculate multiplier for this participant
+                    let prices = new Array(options.length).fill(0);
+                    options.forEach((_, idx) => {
+                        const tier = p.tiers[idx] || 'C';
+                        prices[idx] = tierBasePrices[tier];
+                    });
+
+                    if (p.comparisons && p.comparisons.length > 0) {
+                        const result = computeBradleyTerryPrices(prices, p.comparisons, p.tiers, {});
+                        prices = result.prices;
+                    }
+
+                    // Calculate baseline (C tier average) for this participant
+                    const cTierIndices = options.map((_, idx) => idx).filter(idx => p.tiers[idx] === 'C');
+                    let baselinePrice = cTierIndices.length > 0
+                        ? cTierIndices.reduce((sum, idx) => sum + prices[idx], 0) / cTierIndices.length
+                        : 1000;
+
+                    const multiplier = prices[optionIdx] / baselinePrice;
+                    multipliers.push(multiplier);
+
+                    // Get probability
+                    if (p.probabilities && p.probabilities[optionIdx] !== undefined && p.probabilities[optionIdx] !== null) {
+                        probs.push(p.probabilities[optionIdx]);
+                    }
+                });
+
+                // Calculate medians
+                multipliers.sort((a, b) => a - b);
+                probs.sort((a, b) => a - b);
+
+                const medianMultiplier = multipliers.length > 0
+                    ? (multipliers.length % 2 === 0
+                        ? (multipliers[multipliers.length / 2 - 1] + multipliers[multipliers.length / 2]) / 2
+                        : multipliers[Math.floor(multipliers.length / 2)])
+                    : 1;
+
+                const medianProb = probs.length > 0
+                    ? (probs.length % 2 === 0
+                        ? (probs[probs.length / 2 - 1] + probs[probs.length / 2]) / 2
+                        : probs[Math.floor(probs.length / 2)])
+                    : 0.5;
+
+                // Convert to chart position
+                const clampedMultiplier = Math.max(0.001, Math.min(1000, medianMultiplier));
+                const logValue = Math.log10(clampedMultiplier);
+                const yPercent = ((maxLog - logValue) / logRange) * 100;
+                const xPercent = medianProb * 100;
+
+                // Create point
+                const point = document.createElement('div');
+                point.className = 'chart-data-point';
+                point.style.left = xPercent + '%';
+                point.style.top = yPercent + '%';
+                point.title = option;
+
+                const label = document.createElement('div');
+                label.className = 'chart-data-label';
+                label.textContent = option.length > 30 ? (option.substring(0, 27) + '...') : option;
+
+                let labelLeft = xPercent + 2;
+                if (labelLeft > 70) {
+                    labelLeft = xPercent - 2;
+                    label.style.transform = 'translate(-100%, -50%)';
+                } else {
+                    label.style.transform = 'translate(0, -50%)';
+                }
+                label.style.left = labelLeft + '%';
+                label.style.top = yPercent + '%';
+
+                plotArea.appendChild(point);
+                plotArea.appendChild(label);
+            });
+        }
+
+        function renderParticipantChart(participant) {
+            // Render chart for a specific participant
+            const plotArea = document.getElementById('chartPlotArea');
+            plotArea.innerHTML = '';
+
+            const tierBasePrices = {
+                S: 1000000, A: 100000, B: 10000, C: 1000, D: 100, E: 10, F: 1
+            };
+
+            let prices = new Array(options.length).fill(0);
+            options.forEach((_, idx) => {
+                const tier = participant.tiers[idx] || 'C';
+                prices[idx] = tierBasePrices[tier];
+            });
+
+            if (participant.comparisons && participant.comparisons.length > 0) {
+                const result = computeBradleyTerryPrices(prices, participant.comparisons, participant.tiers, {});
+                prices = result.prices;
+            }
+
+            // Calculate baseline (C tier average)
+            const cTierIndices = options.map((_, idx) => idx).filter(idx => participant.tiers[idx] === 'C');
+            let baselinePrice = cTierIndices.length > 0
+                ? cTierIndices.reduce((sum, idx) => sum + prices[idx], 0) / cTierIndices.length
+                : 1000;
+
+            const minLog = Math.log10(0.001);
+            const maxLog = Math.log10(1000);
+            const logRange = maxLog - minLog;
+
+            options.forEach((option, idx) => {
+                const probability = participant.probabilities && participant.probabilities[idx] !== undefined
+                    ? participant.probabilities[idx]
+                    : 0.5;
+                const multiplier = prices[idx] / baselinePrice;
+
+                const clampedMultiplier = Math.max(0.001, Math.min(1000, multiplier));
+                const logValue = Math.log10(clampedMultiplier);
+                const yPercent = ((maxLog - logValue) / logRange) * 100;
+                const xPercent = probability * 100;
+
+                const point = document.createElement('div');
+                point.className = 'chart-data-point';
+                point.style.left = xPercent + '%';
+                point.style.top = yPercent + '%';
+                point.title = option;
+
+                const label = document.createElement('div');
+                label.className = 'chart-data-label';
+                label.textContent = option.length > 30 ? (option.substring(0, 27) + '...') : option;
+
+                let labelLeft = xPercent + 2;
+                if (labelLeft > 70) {
+                    labelLeft = xPercent - 2;
+                    label.style.transform = 'translate(-100%, -50%)';
+                } else {
+                    label.style.transform = 'translate(0, -50%)';
+                }
+                label.style.left = labelLeft + '%';
+                label.style.top = yPercent + '%';
+
+                plotArea.appendChild(point);
+                plotArea.appendChild(label);
             });
         }
 
