@@ -2711,13 +2711,16 @@
             const pollData = await loadPollData(pollId);
             if (!pollData) return; // Poll not found
 
+            // Convert probabilities object to array format
+            const probabilitiesArray = options.map((_, idx) => probabilities[idx] !== undefined ? probabilities[idx] : null);
+
             const participantData = {
                 name: currentParticipant,
                 timestamp: new Date().toISOString(),
                 comparisons: comparisons,
                 ranking: ranking,
                 tiers: finalTiers,
-                probabilities: probabilities,
+                probabilities: probabilitiesArray,
                 enabled: true
             };
 
@@ -3048,12 +3051,17 @@
 
                 // Save this participant's data
                 const pollData = await loadPollData(pollId);
+
+                // Convert probabilities object to array format
+                const probabilitiesArray = options.map((_, idx) => probabilities[idx] || null);
+
                 const participantData = {
                     name: currentParticipant,
                     timestamp: new Date().toISOString(),
                     comparisons: comparisons,
                     ranking: ranking,
                     tiers: finalTiers,
+                    probabilities: probabilitiesArray,
                     enabled: true
                 };
 
