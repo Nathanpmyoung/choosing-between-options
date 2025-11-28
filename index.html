@@ -1040,6 +1040,10 @@
             <p class="subtitle">Enter your name to get started</p>
             <input type="text" id="nameInput" placeholder="Enter your name" />
             <button onclick="startTierSelection()">Start Ranking</button>
+            <div id="resumeOptions" style="margin-top: 20px; display: none;">
+                <p style="color: #666; font-size: 0.9rem;">Or:</p>
+                <button class="secondary" onclick="resumeLastSession()">Resume Last Session</button>
+            </div>
             <div id="adminViewResults" style="display: none; margin-top: 20px; text-align: center;">
                 <span class="start-over" onclick="viewResults()">View Results (Admin)</span>
             </div>
@@ -1637,6 +1641,61 @@
             }
 
             showScreen('nameScreen');
+            checkForSavedProgress();
+        }
+
+        function checkForSavedProgress() {
+            // Check if there's any saved progress in localStorage
+            const hasSavedProgress = localStorage.getItem(`progress_${pollId}_Nathan`) ||
+                                    localStorage.getItem(`progress_${pollId}_nathan`);
+
+            if (hasSavedProgress) {
+                document.getElementById('resumeOptions').style.display = 'block';
+            } else {
+                document.getElementById('resumeOptions').style.display = 'none';
+            }
+        }
+
+        function resumeLastSession() {
+            // Try to load progress for 'Nathan' or 'nathan'
+            const nameVariants = ['Nathan', 'nathan'];
+            let progressData = null;
+            let foundName = null;
+
+            for (const name of nameVariants) {
+                const progressKey = `progress_${pollId}_${name}`;
+                const savedProgress = localStorage.getItem(progressKey);
+                if (savedProgress) {
+                    progressData = JSON.parse(savedProgress);
+                    foundName = name;
+                    break;
+                }
+            }
+
+            if (progressData && foundName) {
+                currentParticipant = foundName;
+                tiers = progressData.tiers || [];
+                manualTiers = progressData.manualTiers || {};
+                probabilities = progressData.probabilities || {};
+                comparisons = progressData.comparisons || [];
+                drawnPairs = progressData.drawnPairs || [];
+
+                // Figure out where to resume from
+                if (comparisons.length > 0 && Object.keys(probabilities).length > 0) {
+                    // Has comparisons and probabilities - go to chart
+                    goToChartView();
+                } else if (comparisons.length > 0) {
+                    // Has comparisons but no probabilities - resume comparisons
+                    showComparison();
+                } else if (tiers.length > 0) {
+                    // Has tiers but no comparisons - go to tier screen
+                    setupTierSelection();
+                    showScreen('tierScreen');
+                } else {
+                    // No progress, start fresh
+                    startTierSelection();
+                }
+            }
         }
 
         function startTierSelection() {
