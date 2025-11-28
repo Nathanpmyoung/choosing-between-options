@@ -2347,15 +2347,19 @@
                 });
 
                 // Calculate medians
-                multipliers.sort((a, b) => a - b);
+                // For multipliers: use log-space median (geometric median)
+                // So 1000x and 10x → log(1000)=3, log(10)=1 → median=2 → 10^2=100x
+                const logMultipliers = multipliers.map(m => Math.log10(Math.max(0.001, m)));
+                logMultipliers.sort((a, b) => a - b);
+
+                const medianLogMultiplier = logMultipliers.length > 0
+                    ? (logMultipliers.length % 2 === 0
+                        ? (logMultipliers[logMultipliers.length / 2 - 1] + logMultipliers[logMultipliers.length / 2]) / 2
+                        : logMultipliers[Math.floor(logMultipliers.length / 2)])
+                    : 0; // log10(1) = 0
+
+                // For probabilities: use arithmetic median (probabilities are additive)
                 probs.sort((a, b) => a - b);
-
-                const medianMultiplier = multipliers.length > 0
-                    ? (multipliers.length % 2 === 0
-                        ? (multipliers[multipliers.length / 2 - 1] + multipliers[multipliers.length / 2]) / 2
-                        : multipliers[Math.floor(multipliers.length / 2)])
-                    : 1;
-
                 const medianProb = probs.length > 0
                     ? (probs.length % 2 === 0
                         ? (probs[probs.length / 2 - 1] + probs[probs.length / 2]) / 2
@@ -2363,8 +2367,7 @@
                     : 0.5;
 
                 // Convert to chart position
-                const clampedMultiplier = Math.max(0.001, Math.min(1000, medianMultiplier));
-                const logValue = Math.log10(clampedMultiplier);
+                const logValue = medianLogMultiplier;
                 const yPercent = ((maxLog - logValue) / logRange) * 100;
                 const xPercent = medianProb * 100;
 
