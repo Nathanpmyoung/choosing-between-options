@@ -3097,7 +3097,7 @@
                 const rankingWithMultipliers = calculateRelativeMultipliers(p.ranking);
                 return `
                     <div class="section">
-                        <h3>${p.name}'s Rankings</h3>
+                        <h3>${p.name}'s Rankings ${isAdmin ? `<button class="secondary" style="font-size: 0.9rem; padding: 5px 15px; margin-left: 15px;" onclick="editParticipant('${p.name}')">Edit</button>` : ''}</h3>
                         <div class="ranking-header">
                             <span class="ranking-header-rank">#</span>
                             <span class="ranking-header-tier">Tier</span>
@@ -3157,6 +3157,54 @@
 
             // Show the share link screen
             showScreen('shareLinkScreen');
+        }
+
+        async function editParticipant(name) {
+            if (!isAdmin) {
+                alert('Only the poll creator can edit entries');
+                return;
+            }
+
+            const pollData = await loadPollData(pollId);
+            const participant = pollData.participants.find(p => p.name === name);
+
+            if (!participant) {
+                alert('Participant not found');
+                return;
+            }
+
+            // Load their data into the current session
+            currentParticipant = name;
+
+            // Convert tiers object/array to proper format
+            tiers = {};
+            if (participant.tiers) {
+                Object.keys(participant.tiers).forEach(key => {
+                    tiers[key] = participant.tiers[key];
+                });
+            }
+
+            // Load probabilities - convert array to object
+            probabilities = {};
+            if (participant.probabilities) {
+                participant.probabilities.forEach((prob, idx) => {
+                    if (prob !== null && prob !== undefined) {
+                        probabilities[idx] = prob;
+                    }
+                });
+            }
+
+            // Load comparisons
+            comparisons = participant.comparisons || [];
+            drawnPairs = []; // Reset drawn pairs
+            manualTiers = {}; // Reset manual tiers
+
+            // Save to localStorage so they can resume
+            saveProgress();
+
+            // Take them to tier selection to review/edit
+            populateTiersWithConfidence();
+            showScreen('tierScreen');
         }
 
         async function deleteParticipant(name) {
