@@ -2893,7 +2893,7 @@
                     <span class="tier-label">${item.tierLabel || getTierLabel(item.tier)}</span>
                     <span class="rank-name">${item.option}</span>
                     <span class="rank-score">
-                        ${item.multiplierText || ''}
+                        <span class="rank-multiplier">${item.multiplierText || ''}</span>
                     </span>
                 </li>
             `).join('');
@@ -2985,7 +2985,7 @@
                                     <span class="tier-label">${item.tierLabel || getTierLabel(item.tier)}</span>
                                     <span class="rank-name">${item.option}</span>
                                     <span class="rank-score">
-                                        ${item.multiplierText || ''}
+                                        <span class="rank-multiplier">${item.multiplierText || ''}</span>
                                     </span>
                                     <span class="rank-probability">${probabilityText}</span>
                                 </li>
@@ -3158,7 +3158,7 @@
                     <span class="tier-label">${item.tierLabel || getTierLabel(item.tier)}</span>
                     <span class="rank-name">${item.option}</span>
                     <span class="rank-score">
-                        ${item.multiplierText || ''}
+                        <span class="rank-multiplier">${item.multiplierText || ''}</span>
                     </span>
                     <span class="rank-probability">${probabilityText}</span>
                 </li>
