@@ -2065,14 +2065,45 @@
         function renderChart() {
             const plotArea = document.getElementById('chartPlotArea');
             plotArea.innerHTML = '';
-            const tierOrder = ['S', 'A', 'B', 'C', 'D', 'E', 'F'];
+
+            // Calculate actual multipliers using Bradley-Terry
+            const tierBasePrices = {
+                S: 1000000, A: 100000, B: 10000, C: 1000, D: 100, E: 10, F: 1
+            };
+            let prices = new Array(options.length).fill(0);
+            options.forEach((_, idx) => {
+                const tier = tiers[idx] || 'C';
+                prices[idx] = tierBasePrices[tier];
+            });
+
+            if (comparisons && comparisons.length > 0) {
+                const result = computeBradleyTerryPrices(prices, comparisons, tiers, manualTiers);
+                prices = result.prices;
+            }
+
+            // Calculate baseline (C tier average)
+            const cTierIndices = options.map((_, idx) => idx).filter(idx => tiers[idx] === 'C');
+            let baselinePrice = cTierIndices.length > 0
+                ? cTierIndices.reduce((sum, idx) => sum + prices[idx], 0) / cTierIndices.length
+                : 1000;
+
+            // Log scale bounds: 0.001x to 1000x (6 orders of magnitude)
+            const minLog = Math.log10(0.001);  // -3
+            const maxLog = Math.log10(1000);   // 3
+            const logRange = maxLog - minLog;  // 6
+
             for (let idx = 0; idx < options.length; idx++) {
                 const option = options[idx];
-                const tier = tiers[idx] || 'C';
                 const probability = probabilities[idx] || 0.5;
-                const tierIndex = tierOrder.indexOf(tier);
+                const multiplier = prices[idx] / baselinePrice;
+
+                // Convert multiplier to log scale position
+                // Clamp to prevent invalid log values
+                const clampedMultiplier = Math.max(0.001, Math.min(1000, multiplier));
+                const logValue = Math.log10(clampedMultiplier);
+                const yPercent = ((maxLog - logValue) / logRange) * 100; // Invert so high values are at top
+
                 const xPercent = probability * 100;
-                const yPercent = (tierIndex / 6) * 100;
                 const point = document.createElement('div');
                 point.className = 'chart-data-point';
                 point.style.left = xPercent + '%';
@@ -2138,13 +2169,41 @@
                 const clampedTop = Math.max(0, Math.min(100, newTopPercent));
                 draggedElement.style.left = clampedLeft + '%';
                 draggedElement.style.top = clampedTop + '%';
+
+                // Update probability (X-axis)
                 const probability = clampedLeft / 100;
-                const tierIndexFloat = (clampedTop / 100) * 6;
-                const tierIndex = Math.round(tierIndexFloat);
-                const clampedTierIndex = Math.max(0, Math.min(6, tierIndex));
+
+                // Convert Y position back from log scale to tier
+                // Log scale bounds
+                const minLog = Math.log10(0.001);  // -3
+                const maxLog = Math.log10(1000);   // 3
+                const logRange = maxLog - minLog;  // 6
+
+                // Convert Y percent to log value
+                const logValue = maxLog - ((clampedTop / 100) * logRange);
+                const multiplier = Math.pow(10, logValue);
+
+                // Map multiplier to nearest tier
+                let tier = 'C';
+                if (multiplier >= 316) {       // sqrt(100 * 1000) - between A and S
+                    tier = 'S';
+                } else if (multiplier >= 31.6) { // sqrt(10 * 100) - between B and A
+                    tier = 'A';
+                } else if (multiplier >= 3.16) { // sqrt(1 * 10) - between C and B
+                    tier = 'B';
+                } else if (multiplier >= 0.316) { // sqrt(0.1 * 1) - between D and C
+                    tier = 'C';
+                } else if (multiplier >= 0.0316) { // sqrt(0.01 * 0.1) - between E and D
+                    tier = 'D';
+                } else if (multiplier >= 0.00316) { // sqrt(0.001 * 0.01) - between F and E
+                    tier = 'E';
+                } else {
+                    tier = 'F';
+                }
+
                 const optionIdx = draggedElement.dataset.optionIdx;
                 probabilities[optionIdx] = probability;
-                tiers[optionIdx] = tierOrder[clampedTierIndex];
+                tiers[optionIdx] = tier;
                 if (draggedLabel) {
                     const labelLeftPercent = clampedLeft + 2;
                     if (labelLeftPercent > 70) {
