@@ -3278,24 +3278,27 @@
                 allUncertainties: uncertainties
             });
 
-            // Choose multiplier to split the log-space uncertainty
-            // Estimate current ratio
+            // Choose multiplier to bring items into the same order of magnitude
+            // This maximizes information gain from the comparison
             const avgLogA = (lowerBounds[maxUncertaintyIdx] + upperBounds[maxUncertaintyIdx]) / 2;
             const avgLogB = (lowerBounds[minUncertaintyIdx] + upperBounds[minUncertaintyIdx]) / 2;
-            const estimatedRatio = Math.pow(10, avgLogA - avgLogB);
+            const logRatioDiff = avgLogB - avgLogA;  // How many log units B is above A
 
-            // Choose multiplier as nearest power of 10 (but never 1x - that's just a regular comparison)
-            let multiplier;
-            if (Math.abs(estimatedRatio) < 0.3) {
-                multiplier = 0.1;
-            } else if (Math.abs(estimatedRatio) < 5) {
-                multiplier = 10;  // Skip 1x, use 10x instead
-            } else if (Math.abs(estimatedRatio) < 50) {
-                multiplier = 10;
-            } else if (Math.abs(estimatedRatio) < 500) {
-                multiplier = 100;
-            } else {
-                multiplier = 1000;
+            // Choose multiplier as the nearest power of 10 to the ratio
+            // This brings them into the same ballpark
+            const idealMultiplierLog = logRatioDiff;
+            const multiplierOptions = [0.001, 0.01, 0.1, 1, 10, 100, 1000];
+            const multiplierLogs = [-3, -2, -1, 0, 1, 2, 3];
+
+            // Find closest multiplier option
+            let multiplier = 1;
+            let minDistance = Infinity;
+            for (let i = 0; i < multiplierOptions.length; i++) {
+                const distance = Math.abs(multiplierLogs[i] - idealMultiplierLog);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    multiplier = multiplierOptions[i];
+                }
             }
 
             return {
