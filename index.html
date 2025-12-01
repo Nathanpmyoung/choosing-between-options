@@ -1219,7 +1219,7 @@
                 <button class="finish-button" id="finishButton" onclick="finishEarly()" style="display: none;">Finish Ranking</button>
             </div>
 
-            <div class="comparison-container">
+            <div class="comparison-container" id="comparisonContainer">
                 <div class="option-card" onclick="selectOption(0)" id="optionCard1">
                     <h3 id="option1"></h3>
                     <div class="option-score" id="score1"></div>
@@ -1230,6 +1230,15 @@
                     <h3 id="option2"></h3>
                     <div class="option-score" id="score2"></div>
                     <div class="option-tier-badge" id="tier2"></div>
+                </div>
+            </div>
+
+            <div id="comparisonCompleteMessage" style="display: none; text-align: center; padding: 40px; background: #f0f0f0; border-radius: 10px; margin: 20px 0;">
+                <h2>Comparisons Complete! 🎉</h2>
+                <p style="margin: 20px 0;">You've made enough comparisons to get good confidence. You can continue to more comparisons or move on to probabilities.</p>
+                <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+                    <button class="secondary" onclick="continueComparisons()">More Comparisons</button>
+                    <button onclick="goToProbabilityFromComparison()">Continue to Probability</button>
                 </div>
             </div>
             <div class="button-group">
@@ -3223,13 +3232,47 @@
             showNextPair();
         }
 
+        function showComparisonComplete() {
+            // Hide comparison UI, show completion message
+            document.getElementById('comparisonContainer').style.display = 'none';
+            document.getElementById('comparisonCompleteMessage').style.display = 'block';
+        }
+
+        function continueComparisons() {
+            // User wants to keep going - show comparison UI again and find next pair
+            document.getElementById('comparisonContainer').style.display = 'flex';
+            document.getElementById('comparisonCompleteMessage').style.display = 'none';
+
+            // Force next comparison even if confidence is high
+            const nextPair = getNextAdaptiveComparison();
+            if (nextPair) {
+                currentDisplayedPair = { pair: nextPair, isMultiplier: false };
+                displayComparisonPair(nextPair);
+            } else {
+                // Really no more pairs available
+                alert('No more comparison pairs available!');
+                showComparisonComplete();
+            }
+        }
+
+        function displayComparisonPair(pair) {
+            const [idx1, idx2] = pair;
+            document.getElementById('option1').textContent = options[idx1];
+            document.getElementById('option2').textContent = options[idx2];
+            document.getElementById('multiplierDebug').style.display = 'none';
+
+            // Update progress text
+            document.getElementById('progressText').textContent = `Comparison ${comparisons.length + 1}`;
+        }
+
         let surpriseContext = null; // Store context for surprise handling
         let currentDisplayedPair = null; // Store the pair currently being shown
 
         function showNextPair() {
             // Check if we should stop (all uncertainties below threshold)
             if (shouldStopComparisons()) {
-                calculateResults();
+                // Show completion message with option to continue
+                showComparisonComplete();
                 return;
             }
 
