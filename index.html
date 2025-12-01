@@ -3245,20 +3245,67 @@
         }
 
         function continueComparisons() {
-            // User wants to keep going - show comparison UI again and find next pair
+            // User wants to keep going - show comparison UI again
             document.getElementById('comparisonContainer').style.display = 'flex';
             document.getElementById('comparisonCompleteMessage').style.display = 'none';
 
-            // Force next comparison even if confidence is high
-            const nextPair = getNextAdaptiveComparison();
-            if (nextPair) {
-                currentDisplayedPair = { pair: nextPair, isMultiplier: false };
-                displayComparisonPair(nextPair);
-            } else {
-                // Really no more pairs available
-                alert('No more comparison pairs available!');
-                showComparisonComplete();
+            // Try to show next pair (bypassing shouldStopComparisons check)
+            // Check if we should ask a multiplier question
+            let isMultiplierQuestion = false;
+            let multiplierData = null;
+
+            if (shouldAskMultiplierQuestion()) {
+                multiplierData = selectMultiplierComparison();
+                if (multiplierData) {
+                    isMultiplierQuestion = true;
+                    currentDisplayedPair = {
+                        pair: [multiplierData.indexA, multiplierData.indexB],
+                        isMultiplier: true,
+                        multiplier: multiplierData.multiplier,
+                        uncertaintyA: multiplierData.uncertaintyA,
+                        uncertaintyB: multiplierData.uncertaintyB
+                    };
+                }
             }
+
+            if (!isMultiplierQuestion) {
+                // Get next adaptive comparison
+                const nextPair = getNextAdaptiveComparison();
+
+                if (!nextPair) {
+                    // No more useful comparisons
+                    alert('No more comparison pairs available! All pairs have been compared.');
+                    showComparisonComplete();
+                    return;
+                }
+
+                // Store current pair
+                currentDisplayedPair = { pair: nextPair, isMultiplier: false };
+            }
+
+            // Display the comparison using the same logic as showNextPair
+            const [idx1, idx2] = isMultiplierQuestion
+                ? [multiplierData.indexA, multiplierData.indexB]
+                : currentDisplayedPair.pair;
+
+            if (isMultiplierQuestion) {
+                document.getElementById('option1').textContent = `${multiplierData.multiplier}× ${options[idx1]}`;
+                document.getElementById('option2').textContent = options[idx2];
+
+                const debugDiv = document.getElementById('multiplierDebug');
+                const debugText = document.getElementById('multiplierDebugText');
+                debugDiv.style.display = 'block';
+                debugText.innerHTML = `Comparing items with high uncertainty.<br>` +
+                    `<strong>${options[idx1]}</strong>: ${multiplierData.uncertaintyA.toFixed(1)}× uncertainty range<br>` +
+                    `<strong>${options[idx2]}</strong>: ${multiplierData.uncertaintyB.toFixed(1)}× uncertainty range`;
+            } else {
+                document.getElementById('option1').textContent = options[idx1];
+                document.getElementById('option2').textContent = options[idx2];
+                document.getElementById('multiplierDebug').style.display = 'none';
+            }
+
+            // Update progress text
+            document.getElementById('progressText').textContent = `Comparison ${comparisons.length + 1}`;
         }
 
         function displayComparisonPair(pair) {
