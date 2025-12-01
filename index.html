@@ -1399,6 +1399,10 @@
         let probabilityComparisons = []; // Array of {winner, loser} for probability comparisons
         let drawnProbabilityPairs = []; // Pairs marked as equal probability
 
+        // Bounds tracking for multiplier comparisons
+        let lowerBounds = {}; // Maps option index to log(lower bound)
+        let upperBounds = {}; // Maps option index to log(upper bound)
+
         // Data migration system
         function migrateData() {
             const currentVersion = parseInt(localStorage.getItem('dataVersion') || '0');
@@ -1786,6 +1790,9 @@
             options.forEach((_, idx) => {
                 tiers[idx] = 'C';
             });
+
+            // Initialize bounds for each item (in log-space)
+            initializeBounds();
 
             // Populate C tier with all items initially (no prices shown initially)
             const cTierContainer = document.getElementById('tier-items-C');
@@ -2998,6 +3005,134 @@
             // Stop if all uncertainties are below threshold (1.5x = reasonably confident)
             const maxUncertainty = Math.max(...uncertainties.filter(u => isFinite(u)));
             return maxUncertainty < 1.5 || comparisons.length >= options.length * 5; // Safety limit
+        }
+
+        // Bounds tracking functions
+        function initializeBounds() {
+            // Initialize bounds based on tier assignments
+            // Bounds are in log-space (log10 of multiplier)
+            const tierLogValues = {
+                'S': Math.log10(1000),  // 3
+                'A': Math.log10(100),   // 2
+                'B': Math.log10(10),    // 1
+                'C': Math.log10(1),     // 0
+                'D': Math.log10(0.1),   // -1
+                'E': Math.log10(0.01),  // -2
+                'F': Math.log10(0.001)  // -3
+            };
+
+            options.forEach((_, idx) => {
+                const tier = tiers[idx] || 'C';
+                const tierLog = tierLogValues[tier];
+                // Start with ±1 order of magnitude around tier center
+                lowerBounds[idx] = tierLog - 1;
+                upperBounds[idx] = tierLog + 1;
+            });
+        }
+
+        function updateBoundsFromComparison(winner, loser, multiplier = 1) {
+            // Update bounds based on comparison result
+            // If multiplier = 1: standard comparison (winner > loser)
+            // If multiplier > 1: winner > multiplier × loser
+
+            const epsilon = 0.01; // Small value to ensure strict inequality
+            const logMultiplier = Math.log10(multiplier);
+
+            // winner > multiplier × loser
+            // => log(winner) > log(multiplier) + log(loser)
+            lowerBounds[winner] = Math.max(
+                lowerBounds[winner],
+                lowerBounds[loser] + logMultiplier + epsilon
+            );
+
+            // loser < winner / multiplier
+            // => log(loser) < log(winner) - log(multiplier)
+            upperBounds[loser] = Math.min(
+                upperBounds[loser],
+                upperBounds[winner] - logMultiplier - epsilon
+            );
+        }
+
+        function getUncertaintyRatio(idx) {
+            // Return uncertainty as a ratio (how many times could it be higher/lower)
+            return Math.pow(10, upperBounds[idx] - lowerBounds[idx]);
+        }
+
+        function shouldAskMultiplierQuestion() {
+            // Decide if we should ask a multiplier question
+            if (comparisons.length === 0) return false;
+
+            // Calculate max uncertainty
+            const uncertainties = options.map((_, idx) => getUncertaintyRatio(idx));
+            const maxUncertainty = Math.max(...uncertainties);
+
+            // Ask if high uncertainty exists
+            if (maxUncertainty > 100) {
+                // 30% chance when high uncertainty exists
+                return Math.random() < 0.3;
+            }
+
+            // Every 10th comparison
+            if (comparisons.length % 10 === 0) {
+                return true;
+            }
+
+            return false;
+        }
+
+        function selectMultiplierComparison() {
+            // Select a pair for multiplier comparison
+            // Pick the item with highest uncertainty and compare it to a well-constrained item
+
+            const uncertainties = options.map((_, idx) => getUncertaintyRatio(idx));
+
+            // Find item with max uncertainty
+            let maxUncertaintyIdx = 0;
+            let maxUncertainty = uncertainties[0];
+            for (let i = 1; i < options.length; i++) {
+                if (uncertainties[i] > maxUncertainty) {
+                    maxUncertainty = uncertainties[i];
+                    maxUncertaintyIdx = i;
+                }
+            }
+
+            // Find a well-constrained item to compare against
+            let minUncertaintyIdx = 0;
+            let minUncertainty = uncertainties[0];
+            for (let i = 1; i < options.length; i++) {
+                if (uncertainties[i] < minUncertainty) {
+                    minUncertainty = uncertainties[i];
+                    minUncertaintyIdx = i;
+                }
+            }
+
+            // Choose multiplier to split the log-space uncertainty
+            // Estimate current ratio
+            const avgLogA = (lowerBounds[maxUncertaintyIdx] + upperBounds[maxUncertaintyIdx]) / 2;
+            const avgLogB = (lowerBounds[minUncertaintyIdx] + upperBounds[minUncertaintyIdx]) / 2;
+            const estimatedRatio = Math.pow(10, avgLogA - avgLogB);
+
+            // Choose multiplier as nearest power of 10
+            let multiplier;
+            if (Math.abs(estimatedRatio) < 0.1) {
+                multiplier = 0.1;
+            } else if (Math.abs(estimatedRatio) < 3) {
+                multiplier = 1;
+            } else if (Math.abs(estimatedRatio) < 30) {
+                multiplier = 10;
+            } else if (Math.abs(estimatedRatio) < 300) {
+                multiplier = 100;
+            } else {
+                multiplier = 1000;
+            }
+
+            return {
+                indexA: maxUncertaintyIdx,
+                indexB: minUncertaintyIdx,
+                multiplier: multiplier,
+                uncertaintyA: maxUncertainty,
+                uncertaintyB: minUncertainty
+            };
         }
 
         function startComparisons(resetProgress = true) {
