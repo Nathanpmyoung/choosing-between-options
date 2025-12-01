@@ -3104,11 +3104,28 @@
             let minUncertaintyIdx = maxUncertaintyIdx === 0 ? 1 : 0;
             let minUncertainty = uncertainties[minUncertaintyIdx];
             for (let i = 0; i < options.length; i++) {
-                if (i !== maxUncertaintyIdx && uncertainties[i] < minUncertainty) {
+                if (i !== maxUncertaintyIdx && uncertainties[i] <= minUncertainty) {
                     minUncertainty = uncertainties[i];
                     minUncertaintyIdx = i;
                 }
             }
+
+            // Safety check: ensure indices are different
+            if (maxUncertaintyIdx === minUncertaintyIdx) {
+                console.error('BUG: maxUncertaintyIdx === minUncertaintyIdx', maxUncertaintyIdx);
+                // Force them to be different
+                minUncertaintyIdx = maxUncertaintyIdx === 0 ? 1 : 0;
+            }
+
+            console.log('Multiplier comparison:', {
+                maxIdx: maxUncertaintyIdx,
+                maxOption: options[maxUncertaintyIdx],
+                maxUncertainty,
+                minIdx: minUncertaintyIdx,
+                minOption: options[minUncertaintyIdx],
+                minUncertainty,
+                allUncertainties: uncertainties
+            });
 
             // Choose multiplier to split the log-space uncertainty
             // Estimate current ratio
