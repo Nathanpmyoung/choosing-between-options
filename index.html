@@ -2898,11 +2898,22 @@
                     }
                 }
 
+                // Add debug info if debug mode is enabled
+                let debugDisplay = '';
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('debug') === 'true' && lowerBounds[idx] !== undefined && upperBounds[idx] !== undefined) {
+                    const lowerMultiplier = Math.pow(10, lowerBounds[idx]);
+                    const upperMultiplier = Math.pow(10, upperBounds[idx]);
+                    const uncertaintyRatio = getUncertaintyRatio(idx);
+                    debugDisplay = ` <span style="color: #666; font-size: 0.85em;">[${lowerMultiplier.toFixed(2)}x - ${upperMultiplier.toFixed(2)}x, ${uncertaintyRatio.toFixed(1)}× range]</span>`;
+                }
+
                 tierItems[tier].push({
                     idx,
                     option,
                     multiplier,
                     multiplierDisplay,
+                    debugDisplay,
                     confidenceClass,
                     confidenceLabel
                 });
@@ -2919,7 +2930,7 @@
                 tierContainer.innerHTML = tierItems[tier].map(item => `
                     <div class="draggable-item ${item.confidenceClass}" draggable="true" data-option-idx="${item.idx}">
                         <span class="confidence-indicator">${item.confidenceLabel}</span>
-                        ${item.option}${item.multiplierDisplay}
+                        ${item.option}${item.multiplierDisplay}${item.debugDisplay || ''}
                     </div>
                 `).join('');
             });
