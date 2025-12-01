@@ -3018,15 +3018,31 @@
                     );
                     if (markedAsDraw) continue;
 
-                    // Score = combined uncertainty * informativeness
-                    // Higher uncertainty items are prioritized
-                    const combinedUncertainty = (uncertainties[i] + uncertainties[j]) / 2;
+                    let score;
 
-                    // Informativeness: comparisons between similar-strength items are more informative
-                    const pWin = prices[i] / (prices[i] + prices[j]);
-                    const informativeness = pWin * (1 - pWin); // Maximized when p=0.5
+                    if (allowRecompare) {
+                        // When recomparing, focus on items with largest uncertainty in bounds
+                        // Use the bounds-based uncertainty (log-space range) if available
+                        const uncertaintyI = (lowerBounds[i] !== undefined && upperBounds[i] !== undefined)
+                            ? getUncertaintyRatio(i)
+                            : uncertainties[i];
+                        const uncertaintyJ = (lowerBounds[j] !== undefined && upperBounds[j] !== undefined)
+                            ? getUncertaintyRatio(j)
+                            : uncertainties[j];
 
-                    const score = combinedUncertainty * (1 + informativeness * 5); // Weight informativeness
+                        // Prioritize pairs where at least one item has very high uncertainty
+                        const maxUncertainty = Math.max(uncertaintyI, uncertaintyJ);
+                        score = maxUncertainty;
+                    } else {
+                        // For first-time comparisons, use combined uncertainty + informativeness
+                        const combinedUncertainty = (uncertainties[i] + uncertainties[j]) / 2;
+
+                        // Informativeness: comparisons between similar-strength items are more informative
+                        const pWin = prices[i] / (prices[i] + prices[j]);
+                        const informativeness = pWin * (1 - pWin); // Maximized when p=0.5
+
+                        score = combinedUncertainty * (1 + informativeness * 5);
+                    }
 
                     if (score > bestScore) {
                         bestScore = score;
