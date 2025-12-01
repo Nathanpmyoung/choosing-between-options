@@ -2964,9 +2964,25 @@
                     confidenceLabel = '✓';
                 }
 
-                // Show multiplier only if there are comparisons
+                // Show multiplier from bounds if available, otherwise from Bradley-Terry
                 let multiplierDisplay = '';
-                if (comparisons && comparisons.length > 0) {
+                if (lowerBounds[idx] !== undefined && upperBounds[idx] !== undefined) {
+                    // Use midpoint of bounds (in log space) to calculate multiplier
+                    const avgLogValue = (lowerBounds[idx] + upperBounds[idx]) / 2;
+                    const estimatedValue = Math.pow(10, avgLogValue);
+                    const estimatedMultiplier = estimatedValue / baselinePrice;
+
+                    if (estimatedMultiplier >= 10) {
+                        multiplierDisplay = ` (${Math.round(estimatedMultiplier)}x)`;
+                    } else if (estimatedMultiplier >= 2) {
+                        multiplierDisplay = ` (${estimatedMultiplier.toFixed(1)}x)`;
+                    } else if (estimatedMultiplier >= 0.1) {
+                        multiplierDisplay = ` (${estimatedMultiplier.toFixed(2)}x)`;
+                    } else {
+                        multiplierDisplay = ` (1/${Math.round(1/estimatedMultiplier)})`;
+                    }
+                } else if (comparisons && comparisons.length > 0) {
+                    // Fall back to Bradley-Terry multiplier if no bounds
                     if (multiplier >= 10) {
                         multiplierDisplay = ` (${Math.round(multiplier)}x)`;
                     } else if (multiplier >= 2) {
