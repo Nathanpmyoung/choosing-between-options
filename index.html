@@ -1029,7 +1029,8 @@
                 </div>
             </div>
             <div class="button-group">
-                <button onclick="viewResults()">View Results</button>
+                <button onclick="startMyRanking()">Do My Own Ranking</button>
+                <button class="secondary" onclick="viewResults()">View Results</button>
                 <button class="secondary" onclick="startAsOrganizer()">Create New Poll</button>
             </div>
         </div>
@@ -1697,13 +1698,18 @@
             alert('Link copied to clipboard!');
         }
 
-        function participateInOwnPoll() {
+        function startMyRanking() {
             // Allow organizer to participate in their own poll
             // Switch to participant mode
             isOrganizer = false;
 
             // Reload poll to ensure options are set
             loadPoll(pollId);
+        }
+
+        function participateInOwnPoll() {
+            // Alias for backwards compatibility
+            startMyRanking();
         }
 
         function copyResultsLink() {
