@@ -3578,12 +3578,13 @@
 
                 if (multiplier >= 10) {
                     multiplierText = `${Math.round(multiplier)}x`;
-                } else if (multiplier >= 2) {
+                } else if (multiplier >= 1) {
                     multiplierText = `${multiplier.toFixed(1)}x`;
-                } else if (multiplier >= 0.1) {
+                } else if (multiplier >= 0.01) {
                     multiplierText = `${multiplier.toFixed(2)}x`;
                 } else {
-                    multiplierText = `1/${Math.round(1/multiplier)}`;
+                    // For very small values, use 3 decimal places
+                    multiplierText = `${multiplier.toFixed(3)}x`;
                 }
 
                 return {
