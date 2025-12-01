@@ -3100,11 +3100,11 @@
                 }
             }
 
-            // Find a well-constrained item to compare against
-            let minUncertaintyIdx = 0;
-            let minUncertainty = uncertainties[0];
-            for (let i = 1; i < options.length; i++) {
-                if (uncertainties[i] < minUncertainty) {
+            // Find a well-constrained item to compare against (different from maxUncertaintyIdx)
+            let minUncertaintyIdx = maxUncertaintyIdx === 0 ? 1 : 0;
+            let minUncertainty = uncertainties[minUncertaintyIdx];
+            for (let i = 0; i < options.length; i++) {
+                if (i !== maxUncertaintyIdx && uncertainties[i] < minUncertainty) {
                     minUncertainty = uncertainties[i];
                     minUncertaintyIdx = i;
                 }
