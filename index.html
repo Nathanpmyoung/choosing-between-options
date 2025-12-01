@@ -2995,6 +2995,27 @@
                 uncertainties = result.uncertainties;
             }
 
+            // When recomparing, calculate median uncertainty to filter bottom half
+            let medianLogUncertainty = 0;
+            if (allowRecompare) {
+                // Get log uncertainties for all items
+                const logUncertainties = options.map((_, idx) => {
+                    if (lowerBounds[idx] !== undefined && upperBounds[idx] !== undefined) {
+                        return Math.log10(getUncertaintyRatio(idx));
+                    }
+                    return Math.log10(uncertainties[idx]);
+                }).filter(u => isFinite(u));
+
+                // Sort and find median
+                logUncertainties.sort((a, b) => a - b);
+                if (logUncertainties.length > 0) {
+                    const mid = Math.floor(logUncertainties.length / 2);
+                    medianLogUncertainty = logUncertainties.length % 2 === 0
+                        ? (logUncertainties[mid - 1] + logUncertainties[mid]) / 2
+                        : logUncertainties[mid];
+                }
+            }
+
             // Find pair with highest combined uncertainty
             let bestPair = null;
             let bestScore = -Infinity;
@@ -3030,9 +3051,11 @@
                             ? getUncertaintyRatio(j)
                             : uncertainties[j];
 
-                        // Skip pairs where both items have low uncertainty (< 10x range)
-                        const lowUncertaintyThreshold = 10;
-                        if (uncertaintyI < lowUncertaintyThreshold && uncertaintyJ < lowUncertaintyThreshold) {
+                        const logUncertaintyI = Math.log10(uncertaintyI);
+                        const logUncertaintyJ = Math.log10(uncertaintyJ);
+
+                        // Skip pairs where both items are in bottom half of uncertainty
+                        if (logUncertaintyI < medianLogUncertainty && logUncertaintyJ < medianLogUncertainty) {
                             continue;
                         }
 
