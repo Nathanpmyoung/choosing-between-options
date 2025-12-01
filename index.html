@@ -1029,6 +1029,7 @@
                 </div>
             </div>
             <div class="button-group">
+                <button id="continueMyComparisons" onclick="continueMyComparisons()" style="display: none;">Continue My Comparisons</button>
                 <button onclick="startMyRanking()">Do My Own Ranking</button>
                 <button class="secondary" onclick="viewResults()">View Results</button>
                 <button class="secondary" onclick="startAsOrganizer()">Create New Poll</button>
@@ -1710,6 +1711,48 @@
         function participateInOwnPoll() {
             // Alias for backwards compatibility
             startMyRanking();
+        }
+
+        async function continueMyComparisons() {
+            // Load organizer's existing participant data and resume comparisons
+            const pollData = await loadPollData(pollId);
+            if (!pollData) {
+                alert('Poll not found');
+                return;
+            }
+
+            // Find organizer's participant entry (should match current participant name)
+            const myData = pollData.participants.find(p => p.name === currentParticipant);
+            if (!myData) {
+                alert('No existing ranking found to continue');
+                return;
+            }
+
+            // Restore session state from saved participant data
+            comparisons = myData.comparisons || [];
+            tiers = myData.tiers || {};
+
+            // Restore bounds if they exist
+            if (myData.lowerBounds) {
+                lowerBounds = myData.lowerBounds;
+            }
+            if (myData.upperBounds) {
+                upperBounds = myData.upperBounds;
+            }
+
+            // Save to localStorage so progress tracking works
+            saveProgress();
+
+            // Enable recompare mode and go to comparison screen
+            allowRecompareMode = true;
+            showScreen('comparisonScreen');
+
+            // Show admin view results button if applicable
+            if (isAdmin || isOrganizer) {
+                document.getElementById('adminViewResultsFromComparison').style.display = 'block';
+            }
+
+            showNextPair();
         }
 
         function copyResultsLink() {
@@ -3494,6 +3537,8 @@
                 ranking: ranking,
                 tiers: finalTiers,
                 probabilities: probabilitiesArray,
+                lowerBounds: lowerBounds,
+                upperBounds: upperBounds,
                 enabled: true
             };
 
@@ -3786,6 +3831,8 @@
                 comparisons: comparisons,
                 ranking: ranking,
                 tiers: tiers,
+                lowerBounds: lowerBounds,
+                upperBounds: upperBounds,
                 enabled: true
             };
 
@@ -3802,6 +3849,13 @@
                 // Organizer just completed their initial ranking - show share link
                 const shareUrl = `${window.location.origin}${window.location.pathname}?poll=${pollId}`;
                 document.getElementById('shareLinkInput').value = shareUrl;
+
+                // Show "Continue My Comparisons" button if organizer has data
+                const continueBtn = document.getElementById('continueMyComparisons');
+                if (continueBtn && participantData) {
+                    continueBtn.style.display = 'inline-block';
+                }
+
                 showScreen('shareLinkScreen');
             } else if (isAdmin) {
                 viewResults();
