@@ -3360,8 +3360,8 @@
                 const nextPair = getNextAdaptiveComparison();
 
                 if (!nextPair) {
-                    // No more useful comparisons
-                    calculateResults();
+                    // No more uncompared pairs - show completion screen
+                    showComparisonComplete();
                     return;
                 }
 
