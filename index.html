@@ -1760,6 +1760,8 @@
                 probabilities = progressData.probabilities || {};
                 comparisons = progressData.comparisons || [];
                 drawnPairs = progressData.drawnPairs || [];
+                lowerBounds = progressData.lowerBounds || {};
+                upperBounds = progressData.upperBounds || {};
 
                 // Figure out where to resume from
                 if (comparisons.length > 0 && Object.keys(probabilities).length > 0) {
@@ -3072,6 +3074,9 @@
             const epsilon = 0.01; // Small value to ensure strict inequality
             const logMultiplier = Math.log10(multiplier);
 
+            const oldWinnerLower = lowerBounds[winner];
+            const oldLoserUpper = upperBounds[loser];
+
             // winner > multiplier × loser
             // => log(winner) > log(multiplier) + log(loser)
             lowerBounds[winner] = Math.max(
@@ -3085,6 +3090,17 @@
                 upperBounds[loser],
                 upperBounds[winner] - logMultiplier - epsilon
             );
+
+            if (localStorage.getItem('debugMode') === 'true') {
+                console.log(`Bounds updated from ${multiplier}× comparison:`, {
+                    winner: options[winner],
+                    loser: options[loser],
+                    winnerBoundsChanged: oldWinnerLower !== lowerBounds[winner],
+                    loserBoundsChanged: oldLoserUpper !== upperBounds[loser],
+                    winnerBounds: [Math.pow(10, lowerBounds[winner]).toFixed(2), Math.pow(10, upperBounds[winner]).toFixed(2)],
+                    loserBounds: [Math.pow(10, lowerBounds[loser]).toFixed(2), Math.pow(10, upperBounds[loser]).toFixed(2)]
+                });
+            }
         }
 
         function getUncertaintyRatio(idx) {
@@ -3333,6 +3349,8 @@
                 drawnPairs: drawnPairs,
                 probabilityComparisons: probabilityComparisons,
                 drawnProbabilityPairs: drawnProbabilityPairs,
+                lowerBounds: lowerBounds,
+                upperBounds: upperBounds,
                 timestamp: new Date().toISOString()
             };
             localStorage.setItem(progressKey, JSON.stringify(progressData));
@@ -3403,6 +3421,8 @@
                 drawnPairs = progressData.drawnPairs || [];
                 probabilityComparisons = progressData.probabilityComparisons || [];
                 drawnProbabilityPairs = progressData.drawnProbabilityPairs || [];
+                lowerBounds = progressData.lowerBounds || {};
+                upperBounds = progressData.upperBounds || {};
                 return true;
             }
             return false;
@@ -3425,7 +3445,7 @@
             const winner = choice === 0 ? idx1 : idx2;
             const loser = choice === 0 ? idx2 : idx1;
 
-            // Update bounds if this is a multiplier question
+            // Update bounds for all comparisons
             if (isMultiplierQuestion) {
                 const multiplier = currentDisplayedPair.multiplier;
 
@@ -3441,6 +3461,9 @@
                     // This means option2 > (1/multiplier) × option1
                     updateBoundsFromComparison(idx2, idx1, 1/multiplier);
                 }
+            } else {
+                // Regular comparison: winner > loser (multiplier = 1)
+                updateBoundsFromComparison(winner, loser, 1);
             }
 
             // Calculate current prices to check for surprising choice
