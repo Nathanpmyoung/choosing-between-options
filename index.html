@@ -1196,6 +1196,10 @@
         <div id="comparisonScreen" class="screen">
             <h1>Choose Your Preference</h1>
             <div class="progress" id="progressText"></div>
+            <div id="multiplierDebug" style="display: none; background: #fff3cd; padding: 10px; margin: 10px 0; border-radius: 5px; font-size: 0.9rem;">
+                🔍 <strong>Multiplier Question</strong><br>
+                <span id="multiplierDebugText"></span>
+            </div>
 
             <div class="surprise-alert" id="surpriseAlert">
                 <h3>⚠️ Surprising Choice</h3>
@@ -3143,6 +3147,9 @@
                 comparisons = [];
             }
 
+            // Initialize bounds tracking for multiplier comparisons
+            initializeBounds();
+
             // Show admin link if user is admin or organizer
             console.log('startComparisons - isAdmin:', isAdmin, 'isOrganizer:', isOrganizer);
             if (isAdmin || isOrganizer) {
@@ -3163,26 +3170,65 @@
                 return;
             }
 
-            // Get next adaptive comparison
-            const nextPair = getNextAdaptiveComparison();
+            // Check if we should ask a multiplier question
+            let isMultiplierQuestion = false;
+            let multiplierData = null;
 
-            if (!nextPair) {
-                // No more useful comparisons
-                calculateResults();
-                return;
+            if (shouldAskMultiplierQuestion()) {
+                multiplierData = selectMultiplierComparison();
+                if (multiplierData) {
+                    isMultiplierQuestion = true;
+                    // Store multiplier data in currentDisplayedPair
+                    currentDisplayedPair = {
+                        pair: [multiplierData.indexA, multiplierData.indexB],
+                        isMultiplier: true,
+                        multiplier: multiplierData.multiplier,
+                        uncertaintyA: multiplierData.uncertaintyA,
+                        uncertaintyB: multiplierData.uncertaintyB
+                    };
+                }
             }
 
-            // Store current pair
-            currentDisplayedPair = nextPair;
+            if (!isMultiplierQuestion) {
+                // Get next adaptive comparison
+                const nextPair = getNextAdaptiveComparison();
+
+                if (!nextPair) {
+                    // No more useful comparisons
+                    calculateResults();
+                    return;
+                }
+
+                // Store current pair
+                currentDisplayedPair = { pair: nextPair, isMultiplier: false };
+            }
 
             // Hide surprise alert
             document.getElementById('surpriseAlert').style.display = 'none';
 
-            const [idx1, idx2] = nextPair;
+            const [idx1, idx2] = isMultiplierQuestion
+                ? [multiplierData.indexA, multiplierData.indexB]
+                : currentDisplayedPair.pair;
 
             // Display options
-            document.getElementById('option1').textContent = options[idx1];
-            document.getElementById('option2').textContent = options[idx2];
+            if (isMultiplierQuestion) {
+                document.getElementById('option1').textContent = options[idx1];
+                document.getElementById('option2').textContent = `${multiplierData.multiplier}× ${options[idx2]}`;
+
+                // Show debug indicator
+                const debugDiv = document.getElementById('multiplierDebug');
+                const debugText = document.getElementById('multiplierDebugText');
+                debugDiv.style.display = 'block';
+                debugText.innerHTML = `Comparing items with high uncertainty.<br>` +
+                    `<strong>${options[idx1]}</strong>: ${multiplierData.uncertaintyA.toFixed(1)}× uncertainty range<br>` +
+                    `<strong>${options[idx2]}</strong>: ${multiplierData.uncertaintyB.toFixed(1)}× uncertainty range`;
+            } else {
+                document.getElementById('option1').textContent = options[idx1];
+                document.getElementById('option2').textContent = options[idx2];
+
+                // Hide debug indicator
+                document.getElementById('multiplierDebug').style.display = 'none';
+            }
 
             // Hide scores (don't display during comparisons)
             document.getElementById('score1').textContent = '';
@@ -3324,9 +3370,31 @@
         function selectOption(choice) {
             if (!currentDisplayedPair) return;
 
-            const [idx1, idx2] = currentDisplayedPair;
+            // Handle multiplier questions vs regular comparisons
+            const isMultiplierQuestion = currentDisplayedPair.isMultiplier || false;
+            const pair = currentDisplayedPair.pair || currentDisplayedPair;
+            const [idx1, idx2] = pair;
+
             const winner = choice === 0 ? idx1 : idx2;
             const loser = choice === 0 ? idx2 : idx1;
+
+            // Update bounds if this is a multiplier question
+            if (isMultiplierQuestion) {
+                const multiplier = currentDisplayedPair.multiplier;
+
+                // If user chose option1 over (multiplier × option2)
+                // Then option1 > multiplier × option2
+                // If user chose (multiplier × option2) over option1
+                // Then multiplier × option2 > option1
+                if (choice === 0) {
+                    // option1 wins: option1 > multiplier × option2
+                    updateBoundsFromComparison(idx1, idx2, multiplier);
+                } else {
+                    // option2 wins: multiplier × option2 > option1
+                    // This means option2 > (1/multiplier) × option1
+                    updateBoundsFromComparison(idx2, idx1, 1/multiplier);
+                }
+            }
 
             // Calculate current prices to check for surprising choice
             const tierBasePrices = {
@@ -3363,7 +3431,7 @@
                 // Surprising if winner's upper bound is below loser's lower bound
                 const isSurprising = winnerUpperBound < loserLowerBound;
 
-                if (isSurprising) {
+                if (isSurprising && !isMultiplierQuestion) {
                     const winnerTier = tiers[winner] || 'C';
                     const loserTier = tiers[loser] || 'C';
 
