@@ -3324,8 +3324,8 @@
 
             // Display options
             if (isMultiplierQuestion) {
-                document.getElementById('option1').textContent = options[idx1];
-                document.getElementById('option2').textContent = `${multiplierData.multiplier}× ${options[idx2]}`;
+                document.getElementById('option1').textContent = `${multiplierData.multiplier}× ${options[idx1]}`;
+                document.getElementById('option2').textContent = options[idx2];
 
                 // Show debug indicator
                 const debugDiv = document.getElementById('multiplierDebug');
@@ -3498,17 +3498,16 @@
             if (isMultiplierQuestion) {
                 const multiplier = currentDisplayedPair.multiplier;
 
-                // If user chose option1 over (multiplier × option2)
-                // Then option1 > multiplier × option2
-                // If user chose (multiplier × option2) over option1
-                // Then multiplier × option2 > option1
+                // Display is: (multiplier × idx1) vs idx2
+                // If user chose option1: multiplier × idx1 > idx2
+                // If user chose option2: idx2 > multiplier × idx1
                 if (choice === 0) {
-                    // option1 wins: option1 > multiplier × option2
-                    updateBoundsFromComparison(idx1, idx2, multiplier);
+                    // option1 wins: multiplier × idx1 > idx2
+                    // This means: idx1 > (1/multiplier) × idx2
+                    updateBoundsFromComparison(idx1, idx2, 1/multiplier);
                 } else {
-                    // option2 wins: multiplier × option2 > option1
-                    // This means option2 > (1/multiplier) × option1
-                    updateBoundsFromComparison(idx2, idx1, 1/multiplier);
+                    // option2 wins: idx2 > multiplier × idx1
+                    updateBoundsFromComparison(idx2, idx1, multiplier);
                 }
             } else {
                 // Regular comparison: winner > loser (multiplier = 1)
