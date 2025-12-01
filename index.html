@@ -1472,6 +1472,15 @@
             const params = new URLSearchParams(window.location.search);
             pollId = params.get('poll');
 
+            // Check for debug mode parameter
+            if (params.get('debug') === 'true') {
+                localStorage.setItem('debugMode', 'true');
+                console.log('Debug mode enabled. To disable, run: localStorage.setItem("debugMode", "false")');
+            } else if (params.get('debug') === 'false') {
+                localStorage.setItem('debugMode', 'false');
+                console.log('Debug mode disabled.');
+            }
+
             if (pollId) {
                 // Check if user is admin for this poll
                 isAdmin = checkAdmin(pollId);
@@ -1483,6 +1492,17 @@
                 loadPollsList();
             }
         }
+
+        // Make debug toggle available globally
+        window.toggleDebug = function() {
+            const current = localStorage.getItem('debugMode') === 'true';
+            localStorage.setItem('debugMode', current ? 'false' : 'true');
+            console.log('Debug mode ' + (current ? 'disabled' : 'enabled'));
+            // Refresh tier display if on tier screen
+            if (document.getElementById('tierScreen').style.display !== 'none') {
+                populateTiersWithConfidence();
+            }
+        };
 
         function loadPollsList() {
             const pollsContainer = document.getElementById('pollsListContainer');
@@ -2898,10 +2918,10 @@
                     }
                 }
 
-                // Add debug info if debug mode is enabled
+                // Add debug info if debug mode is enabled (check localStorage)
                 let debugDisplay = '';
-                const urlParams = new URLSearchParams(window.location.search);
-                if (urlParams.get('debug') === 'true' && lowerBounds[idx] !== undefined && upperBounds[idx] !== undefined) {
+                const debugMode = localStorage.getItem('debugMode') === 'true';
+                if (debugMode && lowerBounds[idx] !== undefined && upperBounds[idx] !== undefined) {
                     const lowerMultiplier = Math.pow(10, lowerBounds[idx]);
                     const upperMultiplier = Math.pow(10, upperBounds[idx]);
                     const uncertaintyRatio = getUncertaintyRatio(idx);
