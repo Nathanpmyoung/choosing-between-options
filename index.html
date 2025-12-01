@@ -2922,8 +2922,9 @@
                 let debugDisplay = '';
                 const debugMode = localStorage.getItem('debugMode') === 'true';
                 if (debugMode && lowerBounds[idx] !== undefined && upperBounds[idx] !== undefined) {
-                    const uncertaintyRatio = getUncertaintyRatio(idx);
-                    debugDisplay = ` <span style="color: #666; font-size: 0.85em;">[${uncertaintyRatio.toFixed(1)}× uncertainty]</span>`;
+                    const lowerMultiplier = Math.pow(10, lowerBounds[idx]);
+                    const upperMultiplier = Math.pow(10, upperBounds[idx]);
+                    debugDisplay = ` <span style="color: #666; font-size: 0.85em;">[${lowerMultiplier.toFixed(2)}x - ${upperMultiplier.toFixed(2)}x]</span>`;
                 }
 
                 tierItems[tier].push({
