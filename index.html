@@ -3213,6 +3213,49 @@
             return Math.pow(10, upperBounds[idx] - lowerBounds[idx]);
         }
 
+        function calculateOptimalMultiplier(idx1, idx2) {
+            // Given two items, calculate the optimal multiplier to bring them into same OOM
+            // Returns { multiplier, multipliedIndex } where multipliedIndex is which item gets multiplied
+
+            // Get estimated values from bounds
+            const avgLog1 = (lowerBounds[idx1] !== undefined && upperBounds[idx1] !== undefined)
+                ? (lowerBounds[idx1] + upperBounds[idx1]) / 2
+                : Math.log10(1000 * (tiers[idx1] ? { S: 1000, A: 100, B: 10, C: 1, D: 0.1, E: 0.01, F: 0.001 }[tiers[idx1]] : 1));
+
+            const avgLog2 = (lowerBounds[idx2] !== undefined && upperBounds[idx2] !== undefined)
+                ? (lowerBounds[idx2] + upperBounds[idx2]) / 2
+                : Math.log10(1000 * (tiers[idx2] ? { S: 1000, A: 100, B: 10, C: 1, D: 0.1, E: 0.01, F: 0.001 }[tiers[idx2]] : 1));
+
+            const logRatioDiff = Math.abs(avgLog1 - avgLog2);
+
+            // If they're already in same OOM (less than 0.5 log units apart), no multiplier needed
+            if (logRatioDiff < 0.5) {
+                return { multiplier: 1, multipliedIndex: null };
+            }
+
+            // Determine which one to multiply (the smaller one)
+            const smallerIndex = avgLog1 < avgLog2 ? idx1 : idx2;
+            const logDiff = avgLog2 - avgLog1;  // Positive if idx2 > idx1
+
+            // Choose multiplier as nearest power of 10 to the ratio
+            const idealMultiplierLog = Math.abs(logDiff);
+            const multiplierOptions = [0.001, 0.01, 0.1, 1, 10, 100, 1000];
+            const multiplierLogs = [-3, -2, -1, 0, 1, 2, 3];
+
+            // Find closest multiplier option
+            let multiplier = 1;
+            let minDistance = Infinity;
+            for (let i = 0; i < multiplierOptions.length; i++) {
+                const distance = Math.abs(multiplierLogs[i] - idealMultiplierLog);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    multiplier = multiplierOptions[i];
+                }
+            }
+
+            return { multiplier, multipliedIndex: smallerIndex };
+        }
+
         function shouldAskMultiplierQuestion() {
             // Decide if we should ask a multiplier question
             if (comparisons.length === 0) return false;
@@ -3370,63 +3413,52 @@
                 return;
             }
 
-            // Check if we should ask a multiplier question
-            let isMultiplierQuestion = false;
-            let multiplierData = null;
+            // Get next adaptive comparison - use allowRecompareMode flag
+            let nextPair = getNextAdaptiveComparison(allowRecompareMode);
 
-            if (shouldAskMultiplierQuestion()) {
-                multiplierData = selectMultiplierComparison();
-                if (multiplierData) {
-                    isMultiplierQuestion = true;
-                    // Store multiplier data in currentDisplayedPair
-                    currentDisplayedPair = {
-                        pair: [multiplierData.indexA, multiplierData.indexB],
-                        isMultiplier: true,
-                        multiplier: multiplierData.multiplier,
-                        uncertaintyA: multiplierData.uncertaintyA,
-                        uncertaintyB: multiplierData.uncertaintyB
-                    };
-                }
+            if (!nextPair && !allowRecompareMode) {
+                // No uncompared pairs - show completion screen
+                showComparisonComplete();
+                return;
+            } else if (!nextPair && allowRecompareMode) {
+                // In recompare mode but no more pairs (all below median) - stop recompare mode
+                allowRecompareMode = false;
+                showComparisonComplete();
+                return;
             }
 
-            if (!isMultiplierQuestion) {
-                // Get next adaptive comparison - use allowRecompareMode flag
-                let nextPair = getNextAdaptiveComparison(allowRecompareMode);
+            const [idx1, idx2] = nextPair;
 
-                if (!nextPair && !allowRecompareMode) {
-                    // No uncompared pairs - show completion screen
-                    showComparisonComplete();
-                    return;
-                } else if (!nextPair && allowRecompareMode) {
-                    // In recompare mode but no more pairs (all below median) - stop recompare mode
-                    allowRecompareMode = false;
-                    showComparisonComplete();
-                    return;
-                }
+            // Automatically determine if we need a multiplier for this pair
+            const multiplierData = calculateOptimalMultiplier(idx1, idx2);
 
-                // Store current pair
-                currentDisplayedPair = { pair: nextPair, isMultiplier: false };
-            }
+            // Store current pair with multiplier info
+            currentDisplayedPair = {
+                pair: nextPair,
+                isMultiplier: multiplierData.multiplier !== 1,
+                multiplier: multiplierData.multiplier,
+                multipliedIndex: multiplierData.multipliedIndex
+            };
 
             // Hide surprise alert
             document.getElementById('surpriseAlert').style.display = 'none';
 
-            const [idx1, idx2] = isMultiplierQuestion
-                ? [multiplierData.indexA, multiplierData.indexB]
-                : currentDisplayedPair.pair;
-
-            // Display options
-            if (isMultiplierQuestion) {
-                document.getElementById('option1').textContent = `${multiplierData.multiplier}× ${options[idx1]}`;
-                document.getElementById('option2').textContent = options[idx2];
+            // Display options with multiplier if needed
+            if (multiplierData.multiplier !== 1) {
+                // Apply multiplier to the appropriate item
+                if (multiplierData.multipliedIndex === idx1) {
+                    document.getElementById('option1').textContent = `${multiplierData.multiplier}× ${options[idx1]}`;
+                    document.getElementById('option2').textContent = options[idx2];
+                } else {
+                    document.getElementById('option1').textContent = options[idx1];
+                    document.getElementById('option2').textContent = `${multiplierData.multiplier}× ${options[idx2]}`;
+                }
 
                 // Show debug indicator
                 const debugDiv = document.getElementById('multiplierDebug');
                 const debugText = document.getElementById('multiplierDebugText');
                 debugDiv.style.display = 'block';
-                debugText.innerHTML = `Comparing items with high uncertainty.<br>` +
-                    `<strong>${options[idx1]}</strong>: ${multiplierData.uncertaintyA.toFixed(1)}× uncertainty range<br>` +
-                    `<strong>${options[idx2]}</strong>: ${multiplierData.uncertaintyB.toFixed(1)}× uncertainty range`;
+                debugText.innerHTML = `Using ${multiplierData.multiplier}× multiplier to bring items into same order of magnitude.`;
             } else {
                 document.getElementById('option1').textContent = options[idx1];
                 document.getElementById('option2').textContent = options[idx2];
@@ -3592,17 +3624,31 @@
             // Update bounds for all comparisons
             if (isMultiplierQuestion) {
                 const multiplier = currentDisplayedPair.multiplier;
+                const multipliedIndex = currentDisplayedPair.multipliedIndex;
 
-                // Display is: (multiplier × idx1) vs idx2
-                // If user chose option1: multiplier × idx1 > idx2
-                // If user chose option2: idx2 > multiplier × idx1
-                if (choice === 0) {
-                    // option1 wins: multiplier × idx1 > idx2
-                    // This means: idx1 > (1/multiplier) × idx2
-                    updateBoundsFromComparison(idx1, idx2, 1/multiplier);
+                // Determine which option was displayed with multiplier
+                // Could be: (multiplier × A) vs B  OR  A vs (multiplier × B)
+
+                if (multipliedIndex === idx1) {
+                    // Display: (multiplier × idx1) vs idx2
+                    if (choice === 0) {
+                        // option1 wins: multiplier × idx1 > idx2
+                        // This means: idx1 > (1/multiplier) × idx2
+                        updateBoundsFromComparison(idx1, idx2, 1/multiplier);
+                    } else {
+                        // option2 wins: idx2 > multiplier × idx1
+                        updateBoundsFromComparison(idx2, idx1, multiplier);
+                    }
                 } else {
-                    // option2 wins: idx2 > multiplier × idx1
-                    updateBoundsFromComparison(idx2, idx1, multiplier);
+                    // Display: idx1 vs (multiplier × idx2)
+                    if (choice === 0) {
+                        // option1 wins: idx1 > multiplier × idx2
+                        updateBoundsFromComparison(idx1, idx2, multiplier);
+                    } else {
+                        // option2 wins: multiplier × idx2 > idx1
+                        // This means: idx2 > (1/multiplier) × idx1
+                        updateBoundsFromComparison(idx2, idx1, 1/multiplier);
+                    }
                 }
             } else {
                 // Regular comparison: winner > loser (multiplier = 1)
