@@ -2975,7 +2975,7 @@
             setupDragAndDrop();
         }
 
-        function getNextAdaptiveComparison() {
+        function getNextAdaptiveComparison(allowRecompare = false) {
             // Calculate current prices and uncertainties
             const tierBasePrices = {
                 S: 1000000, A: 100000, B: 10000, C: 1000, D: 100, E: 10, F: 1
@@ -3002,12 +3002,14 @@
             // Check all possible pairs
             for (let i = 0; i < options.length; i++) {
                 for (let j = i + 1; j < options.length; j++) {
-                    // Skip if already compared
-                    const alreadyCompared = comparisons.some(c =>
-                        (c.winner === i && c.loser === j) ||
-                        (c.winner === j && c.loser === i)
-                    );
-                    if (alreadyCompared) continue;
+                    // Skip if already compared (unless allowRecompare is true)
+                    if (!allowRecompare) {
+                        const alreadyCompared = comparisons.some(c =>
+                            (c.winner === i && c.loser === j) ||
+                            (c.winner === j && c.loser === i)
+                        );
+                        if (alreadyCompared) continue;
+                    }
 
                     // Skip if marked as draw
                     const markedAsDraw = drawnPairs.some(p =>
@@ -3269,12 +3271,17 @@
             }
 
             if (!isMultiplierQuestion) {
-                // Get next adaptive comparison
-                const nextPair = getNextAdaptiveComparison();
+                // Get next adaptive comparison - try without recompare first, then with
+                let nextPair = getNextAdaptiveComparison(false);
 
                 if (!nextPair) {
-                    // No more useful comparisons
-                    alert('No more comparison pairs available! All pairs have been compared.');
+                    // All pairs compared once, allow recomparing
+                    nextPair = getNextAdaptiveComparison(true);
+                }
+
+                if (!nextPair) {
+                    // Still no pairs (shouldn't happen unless all marked as draw)
+                    alert('No more comparison pairs available!');
                     showComparisonComplete();
                     return;
                 }
