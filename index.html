@@ -3030,6 +3030,12 @@
                             ? getUncertaintyRatio(j)
                             : uncertainties[j];
 
+                        // Skip pairs where both items have low uncertainty (< 10x range)
+                        const lowUncertaintyThreshold = 10;
+                        if (uncertaintyI < lowUncertaintyThreshold && uncertaintyJ < lowUncertaintyThreshold) {
+                            continue;
+                        }
+
                         // Prioritize pairs where at least one item has very high uncertainty
                         const maxUncertainty = Math.max(uncertaintyI, uncertaintyJ);
                         score = maxUncertainty;
