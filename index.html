@@ -3120,7 +3120,7 @@
                     let score;
 
                     if (allowRecompare) {
-                        // When recomparing, focus on items with largest uncertainty in bounds
+                        // When recomparing, focus on items with largest uncertainty AND close battles
                         // Use the bounds-based uncertainty (log-space range) if available
                         const uncertaintyI = (lowerBounds[i] !== undefined && upperBounds[i] !== undefined)
                             ? getUncertaintyRatio(i)
@@ -3139,16 +3139,24 @@
 
                         // Prioritize pairs where at least one item has very high uncertainty
                         const maxUncertainty = Math.max(uncertaintyI, uncertaintyJ);
-                        score = maxUncertainty;
+
+                        // Also consider if they're close in current estimate (close battles help refine)
+                        const pWin = prices[i] / (prices[i] + prices[j]);
+                        const informativeness = 4 * pWin * (1 - pWin);
+
+                        score = maxUncertainty * (0.5 + informativeness);
                     } else {
-                        // For first-time comparisons, use combined uncertainty + informativeness
+                        // For first-time comparisons, prioritize CLOSE BATTLES
                         const combinedUncertainty = (uncertainties[i] + uncertainties[j]) / 2;
 
                         // Informativeness: comparisons between similar-strength items are more informative
+                        // pWin near 0.5 means items are close in value - maximum information gain
                         const pWin = prices[i] / (prices[i] + prices[j]);
-                        const informativeness = pWin * (1 - pWin); // Maximized when p=0.5
+                        const informativeness = 4 * pWin * (1 - pWin); // Peaks at 1.0 when p=0.5
 
-                        score = combinedUncertainty * (1 + informativeness * 5);
+                        // Heavily weight informativeness to prioritize close battles
+                        // This helps Bradley-Terry converge faster to accurate relative prices
+                        score = combinedUncertainty * (0.2 + informativeness * 10);
                     }
 
                     if (score > bestScore) {
@@ -3753,6 +3761,21 @@
                 comparisonData.multipliedIndex = currentDisplayedPair.multipliedIndex;
             }
             comparisons.push(comparisonData);
+
+            // IMMEDIATELY update prices and tiers based on all comparisons so far
+            // This ensures next pair selection uses the most current information
+            const tierBasePricesForUpdate = {
+                S: 1000000, A: 100000, B: 10000, C: 1000, D: 100, E: 10, F: 1
+            };
+            let pricesForUpdate = new Array(options.length).fill(0);
+            options.forEach((_, idx) => {
+                const tier = tiers[idx] || 'C';
+                pricesForUpdate[idx] = tierBasePricesForUpdate[tier];
+            });
+
+            const updateResult = computeBradleyTerryPrices(pricesForUpdate, comparisons, tiers, manualTiers);
+            // Update global tiers (prices are recalculated each time, but tiers inform next comparison)
+            tiers = updateResult.tiers;
 
             // Auto-save progress after each comparison
             saveProgress();
