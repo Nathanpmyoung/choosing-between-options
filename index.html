@@ -1317,6 +1317,14 @@
                 </div>
             </div>
 
+            <!-- Participant Links Section (Admin Only) -->
+            <div id="participantLinksSection" style="display: none; margin-top: 20px;">
+                <h3>Participant Links:</h3>
+                <div id="participantLinksList" style="margin-top: 10px;">
+                    <!-- Links will be populated here -->
+                </div>
+            </div>
+
             <div class="button-group">
                 <button onclick="viewAllCharts()">View Charts</button>
                 <button class="secondary" onclick="exportData()">Export Data</button>
@@ -4397,18 +4405,45 @@
                 document.getElementById('generateParticipantLinkBtn').style.display = 'inline-block';
                 document.getElementById('editOptionsBtn').style.display = 'inline-block';
                 document.getElementById('backToShareBtn').style.display = 'inline-block';
+
+                // Show participant links section
+                if (pollData.participantLinks && pollData.participantLinks.length > 0) {
+                    document.getElementById('participantLinksSection').style.display = 'block';
+                    const linksList = document.getElementById('participantLinksList');
+                    linksList.innerHTML = pollData.participantLinks.map(link => `
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding: 10px; background: #f5f5f5; border-radius: 8px;">
+                            <span style="flex: 1; font-weight: 500;">${link.name}</span>
+                            <button onclick="copyParticipantLink('${link.url.replace(/'/g, "\\'")}', '${link.name.replace(/'/g, "\\'")}')">Copy Link</button>
+                            <button onclick="window.open('${link.url}', '_blank')" class="secondary">Open</button>
+                        </div>
+                    `).join('');
+                } else {
+                    document.getElementById('participantLinksSection').style.display = 'none';
+                }
             } else {
                 document.getElementById('adminBadge').style.display = 'none';
                 document.getElementById('generateParticipantLinkBtn').style.display = 'none';
                 document.getElementById('editOptionsBtn').style.display = 'none';
                 document.getElementById('backToShareBtn').style.display = 'none';
+                document.getElementById('participantLinksSection').style.display = 'none';
             }
 
             updateGroupRanking();
             showScreen('resultsScreen');
         }
 
-        function generateParticipantLink() {
+        function copyParticipantLink(url, name) {
+            const tempInput = document.createElement('input');
+            tempInput.value = url;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+
+            alert(`Link for "${name}" copied to clipboard!`);
+        }
+
+        async function generateParticipantLink() {
             if (!isAdmin) {
                 alert('Only the poll creator can generate participant links');
                 return;
@@ -4422,6 +4457,23 @@
             const baseUrl = `${window.location.origin}${window.location.pathname}`;
             const participantUrl = `${baseUrl}?poll=${pollId}&participant=${encodeURIComponent(participantName.trim())}`;
 
+            // Save to poll data
+            const pollData = await loadPollData(pollId);
+            if (!pollData.participantLinks) {
+                pollData.participantLinks = [];
+            }
+
+            // Check if link already exists
+            const existingLink = pollData.participantLinks.find(link => link.name === participantName.trim());
+            if (!existingLink) {
+                pollData.participantLinks.push({
+                    name: participantName.trim(),
+                    url: participantUrl,
+                    created: new Date().toISOString()
+                });
+                await savePollData(pollId, pollData);
+            }
+
             // Copy to clipboard
             const tempInput = document.createElement('input');
             tempInput.value = participantUrl;
@@ -4431,6 +4483,9 @@
             document.body.removeChild(tempInput);
 
             alert(`Link for "${participantName}" copied to clipboard!\n\n${participantUrl}`);
+
+            // Refresh results to show new link
+            viewResults();
         }
 
         function backToShareLink() {
