@@ -1428,6 +1428,8 @@
         }
 
         function handlePartyKitMessage(data) {
+            console.log('[PARTYKIT] Received message:', data.type, data);
+
             // Set flag to prevent echo
             isReceivingUpdate = true;
 
