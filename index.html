@@ -1458,7 +1458,7 @@
                             // Refresh current view
                             const currentScreen = document.querySelector('.screen.active');
                             if (currentScreen && currentScreen.id === 'tierScreen') {
-                                showTierScreen();
+                                populateTiersWithConfidence();
                             }
                         }
                         break;
@@ -1472,7 +1472,7 @@
                             // Refresh tier screen if active
                             const currentScreen = document.querySelector('.screen.active');
                             if (currentScreen && currentScreen.id === 'tierScreen') {
-                                showTierScreen();
+                                populateTiersWithConfidence();
                             }
                         }
                         break;
@@ -1510,7 +1510,7 @@
             const currentScreen = document.querySelector('.screen.active');
             if (currentScreen) {
                 if (currentScreen.id === 'tierScreen') {
-                    showTierScreen();
+                    populateTiersWithConfidence();
                 } else if (currentScreen.id === 'comparisonScreen') {
                     // Refresh comparison if needed
                 }
