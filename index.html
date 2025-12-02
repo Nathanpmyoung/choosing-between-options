@@ -1496,7 +1496,10 @@
                             // If admin is viewing results, refresh to show updated progress
                             const currentScreen = document.querySelector('.screen.active');
                             if (currentScreen && currentScreen.id === 'resultsScreen') {
+                                console.log('[SYNC] Admin is on results screen, refreshing...');
                                 viewResults();
+                            } else {
+                                console.log('[SYNC] Admin is on', currentScreen?.id, 'not refreshing');
                             }
                         }
                         break;
