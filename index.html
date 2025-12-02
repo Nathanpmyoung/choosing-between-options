@@ -2075,8 +2075,14 @@
                 // Go to tier screen to show progress
                 showTierScreen();
             } else {
-                // Start fresh ranking session
-                startRanking();
+                // Start fresh ranking session - initialize and go to tier screen
+                comparisons = [];
+                drawnPairs = [];
+                tiers = {};
+                lowerBounds = {};
+                upperBounds = {};
+
+                showTierScreen();
             }
         }
 
