@@ -4405,6 +4405,8 @@
         }
 
         async function viewResults() {
+            console.log('[RESULTS] viewResults() called, pollId:', pollId, 'currentParticipant:', currentParticipant, 'comparisons:', comparisons?.length);
+
             // If we have in-progress comparisons, save them as participant data first
             if (currentParticipant && comparisons && comparisons.length > 0) {
                 // Calculate current ranking based on progress
