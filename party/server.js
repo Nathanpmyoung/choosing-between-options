@@ -85,6 +85,16 @@ export default class RankingServer {
         }), [connection.id]);
         break;
 
+      case "screen_changed":
+        // Handle screen navigation changes
+        this.party.broadcast(JSON.stringify({
+          type: "screen_updated",
+          screenId: data.screenId,
+          participant: data.participant,
+          updatedBy: connection.id
+        }), [connection.id]);
+        break;
+
       case "request_sync":
         // Client requesting full state sync
         const fullState = await this.party.storage.get("state");

@@ -1485,6 +1485,20 @@
                         }
                         break;
 
+                    case 'screen_updated':
+                        // Another user changed screens
+                        if (data.participant && data.screenId) {
+                            console.log(`${data.participant} moved to ${data.screenId}`);
+                            showNotification(`${data.participant} moved to ${getScreenName(data.screenId)}`);
+
+                            // If admin is viewing results, refresh to show updated progress
+                            const currentScreen = document.querySelector('.screen.active');
+                            if (currentScreen && currentScreen.id === 'resultsScreen') {
+                                viewResults();
+                            }
+                        }
+                        break;
+
                     case 'user_joined':
                         console.log('User joined:', data.connectionId);
                         showNotification('A collaborator joined');
@@ -1570,6 +1584,35 @@
                 tiers,
                 manualTiers
             }));
+        }
+
+        function syncScreenChangeToPartyKit(screenId) {
+            if (!partyConnection || partyConnection.readyState !== WebSocket.OPEN || isReceivingUpdate) {
+                return;
+            }
+
+            partyConnection.send(JSON.stringify({
+                type: 'screen_changed',
+                screenId,
+                participant: currentParticipant
+            }));
+        }
+
+        function getScreenName(screenId) {
+            const screenNames = {
+                'welcomeScreen': 'Welcome',
+                'setupScreen': 'Setup',
+                'shareLinkScreen': 'Share Link',
+                'nameScreen': 'Name Entry',
+                'tierScreen': 'Tier Assignment',
+                'probabilityScreen': 'Probability Assignment',
+                'probabilityComparisonScreen': 'Probability Comparison',
+                'chartScreen': 'Chart View',
+                'comparisonScreen': 'Comparisons',
+                'thankYouScreen': 'Thank You',
+                'resultsScreen': 'Results'
+            };
+            return screenNames[screenId] || screenId;
         }
 
         function showNotification(message) {
@@ -1865,6 +1908,9 @@
         function showScreen(screenId) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(screenId).classList.add('active');
+
+            // Sync screen change to PartyKit for real-time collaboration
+            syncScreenChangeToPartyKit(screenId);
         }
 
         function startAsOrganizer() {
