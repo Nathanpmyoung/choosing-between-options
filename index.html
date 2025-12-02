@@ -2092,6 +2092,13 @@
                 lowerBounds = {};
                 upperBounds = {};
 
+                // Initialize all options with default tier C
+                options.forEach((_, idx) => {
+                    tiers[idx] = 'C';
+                    lowerBounds[idx] = 3; // log10(1000) = 3
+                    upperBounds[idx] = 3;
+                });
+
                 populateTiersWithConfidence();
                 showScreen('tierScreen');
             }
