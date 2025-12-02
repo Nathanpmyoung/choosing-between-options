@@ -2796,9 +2796,26 @@
             for (let iter = 0; iter < maxIterations; iter++) {
                 const adjustments = new Array(n).fill(1.0);
 
-                comparisons.forEach(({ winner, loser }) => {
+                comparisons.forEach((comparison) => {
+                    const { winner, loser, multiplier, multipliedIndex } = comparison;
+
+                    // Account for multiplier in comparison
+                    // If "m× A > B", then effective comparison is (m × price_A) vs price_B
+                    let effectiveWinnerPrice = prices[winner];
+                    let effectiveLoserPrice = prices[loser];
+
+                    if (multiplier && multiplier !== 1 && multipliedIndex !== undefined) {
+                        if (multipliedIndex === winner) {
+                            // Winner was multiplied: m× winner > loser
+                            effectiveWinnerPrice = multiplier * prices[winner];
+                        } else {
+                            // Loser was multiplied: winner > m× loser
+                            effectiveLoserPrice = multiplier * prices[loser];
+                        }
+                    }
+
                     // Expected probability that winner beats loser
-                    const pWin = prices[winner] / (prices[winner] + prices[loser]);
+                    const pWin = effectiveWinnerPrice / (effectiveWinnerPrice + effectiveLoserPrice);
 
                     // Winner should be higher, loser should be lower
                     // Actual outcome: winner won (1.0), so residual = 1.0 - pWin
@@ -2825,10 +2842,25 @@
             for (let i = 0; i < n; i++) {
                 let fisherInfo = 0;
 
-                comparisons.forEach(({ winner, loser }) => {
+                comparisons.forEach((comparison) => {
+                    const { winner, loser, multiplier, multipliedIndex } = comparison;
+
                     if (winner === i || loser === i) {
                         const opponent = winner === i ? loser : winner;
-                        const pWin = prices[i] / (prices[i] + prices[opponent]);
+
+                        // Account for multiplier when calculating uncertainty
+                        let effectivePriceI = prices[i];
+                        let effectivePriceOpponent = prices[opponent];
+
+                        if (multiplier && multiplier !== 1 && multipliedIndex !== undefined) {
+                            if (multipliedIndex === i) {
+                                effectivePriceI = multiplier * prices[i];
+                            } else if (multipliedIndex === opponent) {
+                                effectivePriceOpponent = multiplier * prices[opponent];
+                            }
+                        }
+
+                        const pWin = effectivePriceI / (effectivePriceI + effectivePriceOpponent);
                         // Fisher information contribution: p(1-p)
                         fisherInfo += pWin * (1 - pWin);
                     }
@@ -3711,7 +3743,13 @@
             }
 
             // Not surprising - continue normally
-            comparisons.push({ winner, loser });
+            // Store comparison with multiplier info if this was a multiplied comparison
+            const comparisonData = { winner, loser };
+            if (isMultiplierQuestion && currentDisplayedPair.multiplier !== 1) {
+                comparisonData.multiplier = currentDisplayedPair.multiplier;
+                comparisonData.multipliedIndex = currentDisplayedPair.multipliedIndex;
+            }
+            comparisons.push(comparisonData);
 
             // Auto-save progress after each comparison
             saveProgress();
@@ -3740,7 +3778,15 @@
         function dismissSurprise() {
             // User confirmed the choice is correct
             const { winner, loser } = surpriseContext;
-            comparisons.push({ winner, loser });
+
+            // Store comparison with multiplier info if applicable
+            const isMultiplierQuestion = currentDisplayedPair.isMultiplier || false;
+            const comparisonData = { winner, loser };
+            if (isMultiplierQuestion && currentDisplayedPair.multiplier !== 1) {
+                comparisonData.multiplier = currentDisplayedPair.multiplier;
+                comparisonData.multipliedIndex = currentDisplayedPair.multipliedIndex;
+            }
+            comparisons.push(comparisonData);
             surpriseContext = null;
 
             // Auto-save progress

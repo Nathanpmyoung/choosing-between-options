@@ -8,7 +8,8 @@
       "Bash(cat:*)",
       "Bash(node list-polls.js:*)",
       "Bash(node admin-scripts/list-polls.js:*)",
-      "Bash(git revert:*)"
+      "Bash(git revert:*)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []
