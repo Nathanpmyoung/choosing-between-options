@@ -34,6 +34,7 @@ export default class RankingServer {
 
   async onMessage(message, connection) {
     const data = JSON.parse(message);
+    console.log('[SERVER] Received message:', data.type, 'from', connection.id);
 
     switch (data.type) {
       case "update_state":
@@ -87,12 +88,14 @@ export default class RankingServer {
 
       case "screen_changed":
         // Handle screen navigation changes
+        console.log('[SERVER] Broadcasting screen_updated:', data.screenId, 'for', data.participant);
         this.party.broadcast(JSON.stringify({
           type: "screen_updated",
           screenId: data.screenId,
           participant: data.participant,
           updatedBy: connection.id
         }), [connection.id]);
+        console.log('[SERVER] Broadcast complete');
         break;
 
       case "request_sync":
