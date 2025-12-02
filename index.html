@@ -1320,6 +1320,7 @@
             <div class="button-group">
                 <button onclick="viewAllCharts()">View Charts</button>
                 <button class="secondary" onclick="exportData()">Export Data</button>
+                <button id="generateParticipantLinkBtn" style="display: none;" onclick="generateParticipantLink()">Generate Participant Link</button>
                 <button id="editOptionsBtn" style="display: none;" class="edit-options-btn" onclick="editOptions()">Edit Options</button>
                 <button id="backToShareBtn" style="display: none;" class="secondary" onclick="backToShareLink()">Back to Share Link</button>
                 <button onclick="startAsOrganizer()">Create New Poll</button>
@@ -1718,6 +1719,7 @@
         function initFromURL() {
             const params = new URLSearchParams(window.location.search);
             pollId = params.get('poll');
+            const participantParam = params.get('participant');
 
             // Check for debug mode parameter
             if (params.get('debug') === 'true') {
@@ -1731,8 +1733,15 @@
             if (pollId) {
                 // Check if user is admin for this poll
                 isAdmin = checkAdmin(pollId);
-                // Participant mode - load poll and show name entry
-                loadPoll(pollId);
+
+                // If participant name is in URL, auto-start session
+                if (participantParam && participantParam.trim()) {
+                    currentParticipant = participantParam.trim();
+                    loadPollAndStartSession(pollId);
+                } else {
+                    // Participant mode - load poll and show name entry
+                    loadPoll(pollId);
+                }
             } else {
                 // Show welcome screen and load polls list
                 showScreen('welcomeScreen');
@@ -2020,6 +2029,36 @@
 
             showScreen('nameScreen');
             checkForSavedProgress();
+        }
+
+        async function loadPollAndStartSession(id) {
+            const pollData = await loadPollData(id);
+            if (!pollData) {
+                alert('Poll not found');
+                showScreen('welcomeScreen');
+                return;
+            }
+
+            options = pollData.options;
+
+            // Connect to PartyKit for real-time collaboration
+            connectToPartyKit(id);
+
+            // Show admin link if user is admin
+            if (isAdmin) {
+                document.getElementById('adminViewResults').style.display = 'block';
+            } else {
+                document.getElementById('adminViewResults').style.display = 'none';
+            }
+
+            // Skip name screen and check for saved progress
+            checkForSavedProgress();
+
+            // If no saved progress, start fresh
+            const progressKey = `progress_${pollId}_${currentParticipant}`;
+            if (!localStorage.getItem(progressKey)) {
+                startRanking();
+            }
         }
 
         function checkForSavedProgress() {
@@ -4355,16 +4394,43 @@
             // Show admin controls if user is admin
             if (isAdmin) {
                 document.getElementById('adminBadge').style.display = 'inline-block';
+                document.getElementById('generateParticipantLinkBtn').style.display = 'inline-block';
                 document.getElementById('editOptionsBtn').style.display = 'inline-block';
                 document.getElementById('backToShareBtn').style.display = 'inline-block';
             } else {
                 document.getElementById('adminBadge').style.display = 'none';
+                document.getElementById('generateParticipantLinkBtn').style.display = 'none';
                 document.getElementById('editOptionsBtn').style.display = 'none';
                 document.getElementById('backToShareBtn').style.display = 'none';
             }
 
             updateGroupRanking();
             showScreen('resultsScreen');
+        }
+
+        function generateParticipantLink() {
+            if (!isAdmin) {
+                alert('Only the poll creator can generate participant links');
+                return;
+            }
+
+            const participantName = prompt('Enter participant name:');
+            if (!participantName || !participantName.trim()) {
+                return;
+            }
+
+            const baseUrl = `${window.location.origin}${window.location.pathname}`;
+            const participantUrl = `${baseUrl}?poll=${pollId}&participant=${encodeURIComponent(participantName.trim())}`;
+
+            // Copy to clipboard
+            const tempInput = document.createElement('input');
+            tempInput.value = participantUrl;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+
+            alert(`Link for "${participantName}" copied to clipboard!\n\n${participantUrl}`);
         }
 
         function backToShareLink() {
