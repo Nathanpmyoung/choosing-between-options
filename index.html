@@ -52,6 +52,28 @@
             }
         }
 
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+        }
+
         h1 {
             font-size: 2.5rem;
             color: #333;
@@ -1343,6 +1365,220 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
+        // PartyKit configuration and initialization
+        let partyConnection = null;
+        let isReceivingUpdate = false; // Flag to prevent echo loops
+
+        const PARTYKIT_HOST = window.location.hostname === 'localhost'
+            ? 'http://localhost:1999'
+            : 'https://choosing-between-options.nathanpmyoung.partykit.dev';
+
+        function connectToPartyKit(roomId) {
+            if (!roomId) return;
+
+            // Close existing connection if any
+            if (partyConnection) {
+                partyConnection.close();
+            }
+
+            const wsProtocol = PARTYKIT_HOST.startsWith('https') ? 'wss' : 'ws';
+            const wsHost = PARTYKIT_HOST.replace(/^https?:\/\//, '');
+            const wsUrl = `${wsProtocol}://${wsHost}/party/${roomId}`;
+
+            console.log('Connecting to PartyKit:', wsUrl);
+            partyConnection = new WebSocket(wsUrl);
+
+            partyConnection.onopen = () => {
+                console.log('PartyKit connected for room:', roomId);
+                // Request initial sync
+                partyConnection.send(JSON.stringify({ type: 'request_sync' }));
+            };
+
+            partyConnection.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handlePartyKitMessage(data);
+                } catch (e) {
+                    console.error('Error handling PartyKit message:', e);
+                }
+            };
+
+            partyConnection.onerror = (error) => {
+                console.error('PartyKit connection error:', error);
+            };
+
+            partyConnection.onclose = () => {
+                console.log('PartyKit connection closed');
+                // Reconnect after 3 seconds
+                setTimeout(() => {
+                    if (pollId === roomId) {
+                        connectToPartyKit(roomId);
+                    }
+                }, 3000);
+            };
+        }
+
+        function handlePartyKitMessage(data) {
+            // Set flag to prevent echo
+            isReceivingUpdate = true;
+
+            try {
+                switch (data.type) {
+                    case 'sync':
+                        // Full state sync
+                        if (data.state) {
+                            applyStateFromPartyKit(data.state);
+                        }
+                        break;
+
+                    case 'state_updated':
+                        // Another user updated the entire state
+                        if (data.state) {
+                            applyStateFromPartyKit(data.state);
+                        }
+                        break;
+
+                    case 'comparison_added':
+                        // Another user made a comparison
+                        if (data.comparisons) {
+                            comparisons = data.comparisons;
+                            tiers = data.tiers || tiers;
+                            lowerBounds = data.lowerBounds || lowerBounds;
+                            upperBounds = data.upperBounds || upperBounds;
+
+                            // Refresh current view
+                            const currentScreen = document.querySelector('.screen.active');
+                            if (currentScreen && currentScreen.id === 'tierScreen') {
+                                showTierScreen();
+                            }
+                        }
+                        break;
+
+                    case 'tier_updated':
+                        // Another user changed tier assignments
+                        if (data.tiers) {
+                            tiers = data.tiers;
+                            manualTiers = data.manualTiers || manualTiers;
+
+                            // Refresh tier screen if active
+                            const currentScreen = document.querySelector('.screen.active');
+                            if (currentScreen && currentScreen.id === 'tierScreen') {
+                                showTierScreen();
+                            }
+                        }
+                        break;
+
+                    case 'user_joined':
+                        console.log('User joined:', data.connectionId);
+                        showNotification('A collaborator joined');
+                        break;
+
+                    case 'user_left':
+                        console.log('User left:', data.connectionId);
+                        showNotification('A collaborator left');
+                        break;
+                }
+            } finally {
+                // Clear flag after a short delay
+                setTimeout(() => {
+                    isReceivingUpdate = false;
+                }, 100);
+            }
+        }
+
+        function applyStateFromPartyKit(state) {
+            if (!state) return;
+
+            // Apply state to local variables
+            if (state.options) options = state.options;
+            if (state.comparisons) comparisons = state.comparisons;
+            if (state.tiers) tiers = state.tiers;
+            if (state.manualTiers) manualTiers = state.manualTiers;
+            if (state.lowerBounds) lowerBounds = state.lowerBounds;
+            if (state.upperBounds) upperBounds = state.upperBounds;
+
+            // Refresh current view
+            const currentScreen = document.querySelector('.screen.active');
+            if (currentScreen) {
+                if (currentScreen.id === 'tierScreen') {
+                    showTierScreen();
+                } else if (currentScreen.id === 'comparisonScreen') {
+                    // Refresh comparison if needed
+                }
+            }
+        }
+
+        function syncStateToPartyKit() {
+            if (!partyConnection || partyConnection.readyState !== WebSocket.OPEN || isReceivingUpdate) {
+                return;
+            }
+
+            const state = {
+                options,
+                comparisons,
+                tiers,
+                manualTiers,
+                lowerBounds,
+                upperBounds
+            };
+
+            partyConnection.send(JSON.stringify({
+                type: 'update_state',
+                state
+            }));
+        }
+
+        function syncComparisonToPartyKit(comparison) {
+            if (!partyConnection || partyConnection.readyState !== WebSocket.OPEN || isReceivingUpdate) {
+                return;
+            }
+
+            partyConnection.send(JSON.stringify({
+                type: 'comparison_made',
+                comparison,
+                comparisons,
+                tiers,
+                lowerBounds,
+                upperBounds
+            }));
+        }
+
+        function syncTierChangeToPartyKit() {
+            if (!partyConnection || partyConnection.readyState !== WebSocket.OPEN || isReceivingUpdate) {
+                return;
+            }
+
+            partyConnection.send(JSON.stringify({
+                type: 'tier_changed',
+                tiers,
+                manualTiers
+            }));
+        }
+
+        function showNotification(message) {
+            // Create a simple notification element
+            const notification = document.createElement('div');
+            notification.textContent = message;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #667eea;
+                color: white;
+                padding: 15px 20px;
+                border-radius: 10px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 10000;
+                animation: slideIn 0.3s ease;
+            `;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
         // Firebase helper functions
         async function savePollData(pollId, pollData) {
             try {
@@ -1772,6 +2008,9 @@
 
             options = pollData.options;
 
+            // Connect to PartyKit for real-time collaboration
+            connectToPartyKit(id);
+
             // Show admin link if user is admin
             if (isAdmin) {
                 document.getElementById('adminViewResults').style.display = 'block';
@@ -1948,6 +2187,9 @@
                         if (comparisons && comparisons.length > 0) {
                             manualTiers[optionIdx] = tier;
                         }
+
+                        // Sync tier change to PartyKit for real-time collaboration
+                        syncTierChangeToPartyKit();
 
                         // Extract option text
                         const optionText = options[optionIdx];
@@ -3776,6 +4018,9 @@
             const updateResult = computeBradleyTerryPrices(pricesForUpdate, comparisons, tiers, manualTiers);
             // Update global tiers (prices are recalculated each time, but tiers inform next comparison)
             tiers = updateResult.tiers;
+
+            // Sync comparison to PartyKit for real-time collaboration
+            syncComparisonToPartyKit(comparisonData);
 
             // Auto-save progress after each comparison
             saveProgress();

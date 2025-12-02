@@ -92,13 +92,20 @@ function computeBradleyTerryPrices(initialPrices, comparisons) {
 
 // Main test
 function runTest() {
-    console.log('=== Bradley-Terry Algorithm Test ===\n');
+    console.log('=== Bradley-Terry Algorithm Test ===');
+    console.log(`Seed: ${Date.now()}\n`);
 
     // Generate 10 random numbers between 1 and 10,000
     const trueValues = [];
     for (let i = 0; i < 10; i++) {
         trueValues.push(Math.floor(Math.random() * 10000) + 1);
     }
+
+    // Sort for easier reading
+    console.log('UNSORTED TRUE VALUES:');
+    trueValues.forEach((val, idx) => {
+        console.log(`  Option ${idx}: ${val}`);
+    });
 
     console.log('TRUE VALUES:');
     trueValues.forEach((val, idx) => {

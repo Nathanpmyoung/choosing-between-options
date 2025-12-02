@@ -1,0 +1,14 @@
+{
+  "name": "choosing-between-options",
+  "version": "1.0.0",
+  "description": "Pairwise comparison ranking tool with real-time collaboration",
+  "main": "index.html",
+  "scripts": {
+    "dev": "partykit dev",
+    "deploy": "partykit deploy"
+  },
+  "dependencies": {
+    "partykit": "^0.0.111"
+  },
+  "devDependencies": {}
+}
