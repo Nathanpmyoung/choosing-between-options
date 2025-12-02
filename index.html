@@ -1893,8 +1893,9 @@
         }
 
         function checkAdmin(pollId) {
-            // Always return true - everyone is admin for all polls
-            return true;
+            // Check if this user created the poll (stored in localStorage)
+            const adminPolls = JSON.parse(localStorage.getItem('adminPolls') || '[]');
+            return adminPolls.includes(pollId);
         }
 
         function markAsAdmin(pollId) {
