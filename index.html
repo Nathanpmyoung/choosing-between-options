@@ -2848,10 +2848,10 @@
             // Update tiers based on final prices (but respect manual tier assignments)
             const newTiers = { ...tiers };
             for (let i = 0; i < n; i++) {
-                // If this tier was manually set, keep it and reset price to tier base
+                // If this tier was manually set, keep the tier but use Bradley-Terry price
                 if (manualTiers.hasOwnProperty(i)) {
                     newTiers[i] = manualTiers[i];
-                    prices[i] = tierBasePrices[manualTiers[i]];
+                    // DON'T reset price - let Bradley-Terry value stand
                 } else {
                     // Auto-assign tier based on calculated price
                     const price = prices[i];
