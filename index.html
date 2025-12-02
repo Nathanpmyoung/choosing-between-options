@@ -1943,8 +1943,11 @@
                         // Update tiers mapping
                         tiers[optionIdx] = tier;
 
-                        // Mark this tier as manually set (prevents auto-reassignment)
-                        manualTiers[optionIdx] = tier;
+                        // Mark this tier as manually set ONLY if comparisons have started
+                        // Initial tier assignment should allow auto-reassignment based on Bradley-Terry
+                        if (comparisons && comparisons.length > 0) {
+                            manualTiers[optionIdx] = tier;
+                        }
 
                         // Extract option text
                         const optionText = options[optionIdx];
