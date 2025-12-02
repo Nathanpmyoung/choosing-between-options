@@ -2059,12 +2059,23 @@
                 document.getElementById('adminViewResults').style.display = 'none';
             }
 
-            // Skip name screen and check for saved progress
-            checkForSavedProgress();
-
-            // If no saved progress, start fresh
+            // Check for saved progress for this participant
             const progressKey = `progress_${pollId}_${currentParticipant}`;
-            if (!localStorage.getItem(progressKey)) {
+            const savedProgress = localStorage.getItem(progressKey);
+
+            if (savedProgress) {
+                // Load saved progress
+                const progressData = JSON.parse(savedProgress);
+                comparisons = progressData.comparisons || [];
+                drawnPairs = progressData.drawnPairs || [];
+                tiers = progressData.tiers || {};
+                lowerBounds = progressData.lowerBounds || {};
+                upperBounds = progressData.upperBounds || {};
+
+                // Go to tier screen to show progress
+                showTierScreen();
+            } else {
+                // Start fresh ranking session
                 startRanking();
             }
         }
