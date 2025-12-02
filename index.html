@@ -1493,13 +1493,19 @@
                             console.log(`${data.participant} moved to ${data.screenId}`);
                             showNotification(`${data.participant} moved to ${getScreenName(data.screenId)}`);
 
-                            // If admin is viewing results, refresh to show updated progress
-                            const currentScreen = document.querySelector('.screen.active');
-                            if (currentScreen && currentScreen.id === 'resultsScreen') {
-                                console.log('[SYNC] Admin is on results screen, refreshing...');
-                                viewResults();
-                            } else {
-                                console.log('[SYNC] Admin is on', currentScreen?.id, 'not refreshing');
+                            // If admin, always refresh results screen (even if not currently viewing it)
+                            // This handles multiple admin windows - any window showing results will update
+                            if (isAdmin) {
+                                const currentScreen = document.querySelector('.screen.active');
+                                console.log('[SYNC] Admin received screen_updated, currentScreen:', currentScreen?.id);
+
+                                if (currentScreen && currentScreen.id === 'resultsScreen') {
+                                    console.log('[SYNC] Admin is on results screen, refreshing...');
+                                    viewResults();
+                                } else {
+                                    console.log('[SYNC] Admin is on', currentScreen?.id);
+                                    console.log('[SYNC] If you have a results window open elsewhere, it should refresh there');
+                                }
                             }
                         }
                         break;
