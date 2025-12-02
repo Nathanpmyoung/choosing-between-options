@@ -1587,14 +1587,29 @@
         }
 
         function syncScreenChangeToPartyKit(screenId) {
-            if (!partyConnection || partyConnection.readyState !== WebSocket.OPEN || isReceivingUpdate) {
+            console.log('[SYNC] syncScreenChangeToPartyKit called:', {
+                screenId,
+                hasConnection: !!partyConnection,
+                connectionState: partyConnection?.readyState,
+                isReceivingUpdate,
+                currentParticipant
+            });
+
+            if (!partyConnection || partyConnection.readyState !== WebSocket.OPEN) {
+                console.log('[SYNC] Skipping screen sync - connection not ready');
                 return;
             }
 
+            if (isReceivingUpdate) {
+                console.log('[SYNC] Skipping screen sync - receiving update');
+                return;
+            }
+
+            console.log('[SYNC] Sending screen_changed to PartyKit');
             partyConnection.send(JSON.stringify({
                 type: 'screen_changed',
                 screenId,
-                participant: currentParticipant
+                participant: currentParticipant || 'Unknown'
             }));
         }
 
