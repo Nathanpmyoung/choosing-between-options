@@ -1457,8 +1457,12 @@
 
                             // Refresh current view
                             const currentScreen = document.querySelector('.screen.active');
-                            if (currentScreen && currentScreen.id === 'tierScreen') {
-                                populateTiersWithConfidence();
+                            if (currentScreen) {
+                                if (currentScreen.id === 'tierScreen') {
+                                    populateTiersWithConfidence();
+                                } else if (currentScreen.id === 'resultsScreen') {
+                                    viewResults(); // Refresh results screen
+                                }
                             }
                         }
                         break;
@@ -1471,8 +1475,12 @@
 
                             // Refresh tier screen if active
                             const currentScreen = document.querySelector('.screen.active');
-                            if (currentScreen && currentScreen.id === 'tierScreen') {
-                                populateTiersWithConfidence();
+                            if (currentScreen) {
+                                if (currentScreen.id === 'tierScreen') {
+                                    populateTiersWithConfidence();
+                                } else if (currentScreen.id === 'resultsScreen') {
+                                    viewResults(); // Refresh results screen
+                                }
                             }
                         }
                         break;
