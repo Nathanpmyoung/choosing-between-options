@@ -1729,6 +1729,10 @@
             pollId = params.get('poll');
             const participantParam = params.get('participant');
 
+            console.log('[DEBUG] initFromURL called');
+            console.log('[DEBUG] pollId:', pollId);
+            console.log('[DEBUG] participantParam:', participantParam);
+
             // Check for debug mode parameter
             if (params.get('debug') === 'true') {
                 localStorage.setItem('debugMode', 'true');
@@ -1741,16 +1745,21 @@
             if (pollId) {
                 // Check if user is admin for this poll
                 isAdmin = checkAdmin(pollId);
+                console.log('[DEBUG] isAdmin:', isAdmin);
 
-                // If participant name is in URL, auto-start session
+                // If participant name in URL, auto-start session
                 if (participantParam && participantParam.trim()) {
+                    console.log('[DEBUG] Participant found in URL, calling loadPollAndStartSession');
                     currentParticipant = participantParam.trim();
+                    console.log('[DEBUG] currentParticipant set to:', currentParticipant);
                     loadPollAndStartSession(pollId);
                 } else {
+                    console.log('[DEBUG] No participant in URL, calling loadPoll');
                     // Participant mode - load poll and show name entry
                     loadPoll(pollId);
                 }
             } else {
+                console.log('[DEBUG] No pollId, showing welcome screen');
                 // Show welcome screen and load polls list
                 showScreen('welcomeScreen');
                 loadPollsList();
