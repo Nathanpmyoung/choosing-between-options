@@ -95,11 +95,8 @@ function runTest() {
     console.log('=== Bradley-Terry Algorithm Test ===');
     console.log(`Seed: ${Date.now()}\n`);
 
-    // Generate 10 random numbers between 1 and 10,000
-    const trueValues = [];
-    for (let i = 0; i < 10; i++) {
-        trueValues.push(Math.floor(Math.random() * 10000) + 1);
-    }
+    // Use numbers 1 to 5
+    const trueValues = [1, 2, 3, 4, 5];
 
     // Sort for easier reading
     console.log('UNSORTED TRUE VALUES:');
@@ -141,7 +138,12 @@ function runTest() {
         // Calculate optimal multiplier
         const { multiplier, multipliedIndex } = calculateOptimalMultiplier(val1, val2);
 
-        // Determine winner (always pick bigger including multiplier)
+        // Determine winner based on TRUE values (not multiplied values)
+        // The multiplier is ONLY for display purposes to help visualize the comparison
+        const winner = val1 > val2 ? idx1 : idx2;
+        const loser = winner === idx1 ? idx2 : idx1;
+
+        // For display purposes, calculate effective values
         let effectiveVal1 = val1;
         let effectiveVal2 = val2;
 
@@ -152,9 +154,6 @@ function runTest() {
                 effectiveVal2 = multiplier * val2;
             }
         }
-
-        const winner = effectiveVal1 > effectiveVal2 ? idx1 : idx2;
-        const loser = winner === idx1 ? idx2 : idx1;
 
         // Store comparison
         const comparisonData = { winner, loser };
@@ -258,9 +257,9 @@ function runTest() {
 
     // Show a few example conversions
     const examples = [
-        [9, 0], // Highest vs lowest
-        [2, 1], // Two high ones
-        [5, 6], // Two low ones
+        [4, 0], // Highest vs lowest
+        [4, 2], // High vs middle
+        [2, 1], // Middle vs low
     ];
 
     examples.forEach(([idxA, idxB]) => {

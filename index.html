@@ -1488,25 +1488,50 @@
                         break;
 
                     case 'screen_updated':
-                        // Another user changed screens
+                        // Another user changed screens - mirror their navigation
                         if (data.participant && data.screenId) {
                             console.log(`${data.participant} moved to ${data.screenId}`);
                             showNotification(`${data.participant} moved to ${getScreenName(data.screenId)}`);
 
-                            // If admin, always refresh results screen (even if not currently viewing it)
-                            // This handles multiple admin windows - any window showing results will update
-                            if (isAdmin) {
-                                const currentScreen = document.querySelector('.screen.active');
-                                console.log('[SYNC] Admin received screen_updated, currentScreen:', currentScreen?.id);
+                            // Follow them to the same screen
+                            console.log('[SYNC] Following to screen:', data.screenId);
+                            showScreen(data.screenId);
+                        }
+                        break;
 
-                                if (currentScreen && currentScreen.id === 'resultsScreen') {
-                                    console.log('[SYNC] Admin is on results screen, refreshing...');
-                                    viewResults();
+                    case 'comparison_drawn':
+                        // Another window drew a comparison - show the same pair with same multiplier
+                        if (data.idx1 !== undefined && data.idx2 !== undefined) {
+                            console.log('[SYNC] Received comparison:', data.idx1, 'vs', data.idx2, 'multiplier:', data.multiplier);
+
+                            // Store the received pair
+                            currentDisplayedPair = {
+                                pair: [data.idx1, data.idx2],
+                                isMultiplier: data.multiplier !== 1,
+                                multiplier: data.multiplier || 1,
+                                multipliedIndex: data.multipliedIndex
+                            };
+
+                            // Display the same comparison
+                            if (data.multiplier && data.multiplier !== 1) {
+                                if (data.multipliedIndex === data.idx1) {
+                                    document.getElementById('option1').textContent = `${data.multiplier}× ${options[data.idx1]}`;
+                                    document.getElementById('option2').textContent = options[data.idx2];
                                 } else {
-                                    console.log('[SYNC] Admin is on', currentScreen?.id);
-                                    console.log('[SYNC] If you have a results window open elsewhere, it should refresh there');
+                                    document.getElementById('option1').textContent = options[data.idx1];
+                                    document.getElementById('option2').textContent = `${data.multiplier}× ${options[data.idx2]}`;
                                 }
+
+                                document.getElementById('multiplierDebug').style.display = 'block';
+                                document.getElementById('multiplierDebugText').innerHTML = `Using ${data.multiplier}× multiplier to bring items into same order of magnitude.`;
+                            } else {
+                                document.getElementById('option1').textContent = options[data.idx1];
+                                document.getElementById('option2').textContent = options[data.idx2];
+                                document.getElementById('multiplierDebug').style.display = 'none';
                             }
+
+                            // Update progress text
+                            document.getElementById('progressText').textContent = `Comparison ${comparisons.length + 1} • Confidence: Building...`;
                         }
                         break;
 
@@ -1993,6 +2018,14 @@
             currentParticipant = organizerName;
             isOrganizer = true;
 
+            // Update URL to include poll ID so PartyKit can connect
+            const newUrl = new URL(window.location);
+            newUrl.searchParams.set('poll', pollId);
+            window.history.pushState({}, '', newUrl);
+
+            // Connect to PartyKit now that we have the poll ID in the URL
+            connectToPartyKit(pollId);
+
             // Initialize for fresh start
             comparisons = [];
             drawnPairs = [];
@@ -2179,6 +2212,9 @@
                     lowerBounds[idx] = 3; // log10(1000) = 3
                     upperBounds[idx] = 3;
                 });
+
+                // Save initial state so participant appears in the list immediately
+                saveProgress();
 
                 populateTiersWithConfidence();
                 showScreen('tierScreen');
@@ -3888,6 +3924,17 @@
                 multipliedIndex: multiplierData.multipliedIndex
             };
 
+            // Broadcast this comparison to other connected windows
+            if (partyConnection && partyConnection.readyState === WebSocket.OPEN && !isReceivingUpdate) {
+                partyConnection.send(JSON.stringify({
+                    type: 'comparison_drawn',
+                    idx1,
+                    idx2,
+                    multiplier: multiplierData.multiplier,
+                    multipliedIndex: multiplierData.multipliedIndex
+                }));
+            }
+
             // Hide surprise alert
             document.getElementById('surpriseAlert').style.display = 'none';
 
@@ -3976,12 +4023,24 @@
                 timestamp: new Date().toISOString()
             };
             localStorage.setItem(progressKey, JSON.stringify(progressData));
+
+            // Also save to poll data if we're a participant (not admin viewing)
+            if (currentParticipant && pollId) {
+                saveParticipantData();
+            }
         }
 
         async function saveParticipantData() {
             // Save current progress as participant data to the poll
             // This ensures partial responses are captured even if user doesn't complete all comparisons
-            if (!currentParticipant || !comparisons || comparisons.length === 0) {
+            if (!currentParticipant || !pollId) {
+                return; // No participant or poll ID set
+            }
+
+            // Skip if we have neither tiers nor comparisons (nothing to save)
+            const hasTiers = tiers && Object.keys(tiers).length > 0;
+            const hasComparisons = comparisons && comparisons.length > 0;
+            if (!hasTiers && !hasComparisons) {
                 return; // Nothing to save yet
             }
 

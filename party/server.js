@@ -98,6 +98,19 @@ export default class RankingServer {
         console.log('[SERVER] Broadcast complete');
         break;
 
+      case "comparison_drawn":
+        // Handle comparison pair drawn - broadcast to others with same multiplier
+        console.log('[SERVER] Broadcasting comparison_drawn:', data.idx1, 'vs', data.idx2);
+        this.party.broadcast(JSON.stringify({
+          type: "comparison_drawn",
+          idx1: data.idx1,
+          idx2: data.idx2,
+          multiplier: data.multiplier,
+          multipliedIndex: data.multipliedIndex,
+          updatedBy: connection.id
+        }), [connection.id]);
+        break;
+
       case "request_sync":
         // Client requesting full state sync
         const fullState = await this.party.storage.get("state");
