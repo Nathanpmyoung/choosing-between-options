@@ -1399,6 +1399,12 @@
 
             partyConnection.onopen = () => {
                 console.log('PartyKit connected for room:', roomId);
+                // Identify this connection with participant name and admin status
+                partyConnection.send(JSON.stringify({
+                    type: 'identify',
+                    participant: currentParticipant,
+                    isAdmin: isAdmin
+                }));
                 // Request initial sync
                 partyConnection.send(JSON.stringify({ type: 'request_sync' }));
             };
