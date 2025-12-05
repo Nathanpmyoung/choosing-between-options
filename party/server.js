@@ -18,14 +18,8 @@ export default class RankingServer {
   }
 
   async onConnect(connection, ctx) {
-    // Send current state to newly connected client
-    const state = await this.party.storage.get("state");
-    if (state) {
-      connection.send(JSON.stringify({
-        type: "sync",
-        state: state
-      }));
-    }
+    // Note: We'll send state after the client identifies themselves
+    // with their participant name, so we can send the right state
 
     // Notify others that someone joined
     this.party.broadcast(JSON.stringify({
@@ -46,11 +40,25 @@ export default class RankingServer {
           isAdmin: data.isAdmin
         });
         console.log('[SERVER] Connection identified:', connection.id, data.participant, 'isAdmin:', data.isAdmin);
+
+        // Send participant-specific state
+        const participantStateKey = `state_${data.participant}`;
+        const participantState = await this.party.storage.get(participantStateKey);
+        if (participantState) {
+          connection.send(JSON.stringify({
+            type: "sync",
+            state: participantState
+          }));
+        }
         break;
 
       case "update_state":
-        // Store the updated state
-        await this.party.storage.put("state", data.state);
+        // Store the updated state per participant
+        const senderInfo = this.connectionInfo.get(connection.id);
+        if (senderInfo && senderInfo.participant) {
+          const stateKey = `state_${senderInfo.participant}`;
+          await this.party.storage.put(stateKey, data.state);
+        }
 
         // Broadcast to connections with same participant
         this.broadcastToParticipant(JSON.stringify({
@@ -62,13 +70,17 @@ export default class RankingServer {
 
       case "comparison_made":
         // Handle individual comparison updates for faster sync
-        const currentState = await this.party.storage.get("state") || {};
-        currentState.comparisons = data.comparisons;
-        currentState.tiers = data.tiers;
-        currentState.lowerBounds = data.lowerBounds;
-        currentState.upperBounds = data.upperBounds;
+        const senderInfo2 = this.connectionInfo.get(connection.id);
+        if (senderInfo2 && senderInfo2.participant) {
+          const stateKey = `state_${senderInfo2.participant}`;
+          const currentState = await this.party.storage.get(stateKey) || {};
+          currentState.comparisons = data.comparisons;
+          currentState.tiers = data.tiers;
+          currentState.lowerBounds = data.lowerBounds;
+          currentState.upperBounds = data.upperBounds;
 
-        await this.party.storage.put("state", currentState);
+          await this.party.storage.put(stateKey, currentState);
+        }
 
         this.broadcastToParticipant(JSON.stringify({
           type: "comparison_added",
@@ -83,11 +95,15 @@ export default class RankingServer {
 
       case "tier_changed":
         // Handle tier assignment changes
-        const state = await this.party.storage.get("state") || {};
-        state.tiers = data.tiers;
-        state.manualTiers = data.manualTiers;
+        const senderInfo3 = this.connectionInfo.get(connection.id);
+        if (senderInfo3 && senderInfo3.participant) {
+          const stateKey = `state_${senderInfo3.participant}`;
+          const state = await this.party.storage.get(stateKey) || {};
+          state.tiers = data.tiers;
+          state.manualTiers = data.manualTiers;
 
-        await this.party.storage.put("state", state);
+          await this.party.storage.put(stateKey, state);
+        }
 
         this.broadcastToParticipant(JSON.stringify({
           type: "tier_updated",
@@ -124,11 +140,17 @@ export default class RankingServer {
 
       case "request_sync":
         // Client requesting full state sync
-        const fullState = await this.party.storage.get("state");
-        connection.send(JSON.stringify({
-          type: "sync",
-          state: fullState
-        }));
+        const senderInfo4 = this.connectionInfo.get(connection.id);
+        if (senderInfo4 && senderInfo4.participant) {
+          const stateKey = `state_${senderInfo4.participant}`;
+          const fullState = await this.party.storage.get(stateKey);
+          if (fullState) {
+            connection.send(JSON.stringify({
+              type: "sync",
+              state: fullState
+            }));
+          }
+        }
         break;
     }
   }
