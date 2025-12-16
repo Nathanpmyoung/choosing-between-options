@@ -1884,6 +1884,7 @@
             pollId = params.get('poll');
             const participantParam = params.get('participant');
             const liveParam = params.get('live');
+            const demoParam = params.get('demo');
 
             console.log('[DEBUG] initFromURL called');
             console.log('[DEBUG] pollId:', pollId);
@@ -1897,6 +1898,12 @@
             } else if (params.get('debug') === 'false') {
                 localStorage.setItem('debugMode', 'false');
                 console.log('Debug mode disabled.');
+            }
+
+            // Check for demo mode - load test data
+            if (demoParam === 'true') {
+                loadDemoData(liveParam === 'true');
+                return;
             }
 
             // Check for live/collaborative mode
@@ -2008,6 +2015,108 @@
         function loadPollFromList(selectedPollId) {
             // Navigate to the poll URL
             window.location.href = `${window.location.pathname}?poll=${selectedPollId}`;
+        }
+
+        async function loadDemoData(isLive = false) {
+            console.log('[DEMO] Loading demo data, isLive:', isLive);
+
+            // Demo options - a mix of items at different scales
+            const demoOptions = [
+                'Mass extinction event',
+                'Major war',
+                'Global pandemic',
+                'Economic recession',
+                'Local natural disaster',
+                'Car accident',
+                'Job loss',
+                'Minor illness',
+                'Stubbed toe',
+                'Paper cut'
+            ];
+
+            // Create a demo poll
+            pollId = 'demo_' + Date.now().toString(36);
+            options = demoOptions;
+
+            // Save demo poll
+            const pollData = {
+                id: pollId,
+                options: options,
+                created: new Date().toISOString(),
+                participants: []
+            };
+            await savePollData(pollId, pollData);
+
+            // Mark as admin so we can see results
+            markAsAdmin(pollId);
+            isAdmin = true;
+            isOrganizer = true;
+
+            // Set up for live or survey mode
+            if (isLive) {
+                isLiveMode = true;
+                currentParticipant = '__live__';
+            } else {
+                currentParticipant = 'Demo User';
+            }
+
+            // Update URL to include poll ID
+            const newUrl = new URL(window.location);
+            newUrl.searchParams.delete('demo');
+            newUrl.searchParams.set('poll', pollId);
+            if (isLive) newUrl.searchParams.set('live', 'true');
+            window.history.replaceState({}, '', newUrl);
+
+            // Connect to PartyKit
+            connectToPartyKit(pollId);
+
+            // Initialize tiers with some pre-set values for faster testing
+            tiers = {};
+            manualTiers = {};
+            customMultipliers = {};
+
+            // Pre-assign some tiers to speed up testing
+            // S tier (1000x) - catastrophic
+            tiers[0] = 'S';  // Mass extinction
+            tiers[1] = 'S';  // Major war
+
+            // A tier (100x) - severe
+            tiers[2] = 'A';  // Pandemic
+            tiers[3] = 'A';  // Recession
+
+            // B tier (10x) - significant
+            tiers[4] = 'B';  // Natural disaster
+            tiers[5] = 'B';  // Car accident
+
+            // C tier (1x) - baseline
+            tiers[6] = 'C';  // Job loss
+            tiers[7] = 'C';  // Minor illness
+
+            // D tier (0.1x) - minor
+            tiers[8] = 'D';  // Stubbed toe
+            tiers[9] = 'D';  // Paper cut
+
+            // Populate tiers in UI
+            ['S', 'A', 'B', 'C', 'D', 'E', 'F'].forEach(tier => {
+                document.getElementById(`tier-items-${tier}`).innerHTML = '';
+            });
+
+            options.forEach((option, idx) => {
+                const tier = tiers[idx] || 'C';
+                const tierContainer = document.getElementById(`tier-items-${tier}`);
+                tierContainer.innerHTML += createTierItemHTML(idx, option);
+            });
+
+            // Setup drag and drop
+            setupDragAndDrop();
+
+            // Show admin link
+            document.getElementById('adminViewResultsFromTier').style.display = 'block';
+
+            // Go to tier screen
+            showScreen('tierScreen');
+
+            console.log('[DEMO] Demo loaded with poll:', pollId);
         }
 
         function checkAdmin(pollId) {
