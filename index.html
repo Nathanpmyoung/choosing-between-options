@@ -4993,7 +4993,7 @@
             }
 
             const baseUrl = `${window.location.origin}${window.location.pathname}`;
-            const participantUrl = `${baseUrl}?poll=${pollId}&participant=${encodeURIComponent(participantName.trim())}`;
+            const participantUrl = `${baseUrl}?poll=${pollId}&participant=${encodeURIComponent(participantName.trim())}&live=true`;
 
             // Save to poll data
             const pollData = await loadPollData(pollId);
