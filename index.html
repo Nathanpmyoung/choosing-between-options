@@ -2834,13 +2834,6 @@
         }
 
         function finishTierAssignment() {
-            // Check if there are any unassigned items
-            const unassignedCount = options.filter((_, idx) => !tiers[idx]).length;
-            if (unassignedCount > 0) {
-                alert(`Please assign all items to tiers. ${unassignedCount} item(s) still unassigned.`);
-                return;
-            }
-
             // Save final state
             saveProgress();
 
