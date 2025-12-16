@@ -17,12 +17,7 @@ export default class RankingServer {
   async onConnect(connection, ctx) {
     // Note: We'll send state after the client identifies themselves
     // with their participant name, so we can send the right state
-
-    // Notify others that someone joined
-    this.party.broadcast(JSON.stringify({
-      type: "user_joined",
-      connectionId: connection.id
-    }), [connection.id]);
+    // Don't broadcast user_joined here - wait until we know their participant name
   }
 
   async onMessage(message, connection) {
@@ -38,6 +33,15 @@ export default class RankingServer {
           isLiveMode: data.isLiveMode
         });
         console.log('[SERVER] Connection identified:', connection.id, data.participant, 'isAdmin:', data.isAdmin, 'isLiveMode:', data.isLiveMode);
+
+        // Notify others with same participant that someone joined (only in live mode)
+        if (data.isLiveMode) {
+          this.broadcastToParticipant(JSON.stringify({
+            type: "user_joined",
+            connectionId: connection.id,
+            participant: data.participant
+          }), connection);
+        }
 
         // Send state - always use participant name as key (enables multiple live sessions)
         const stateKey = `state_${data.participant}`;
@@ -159,14 +163,28 @@ export default class RankingServer {
   }
 
   onClose(connection) {
+    // Get connection info before deleting
+    const connInfo = this.connectionInfo.get(connection.id);
+
+    // Only notify same-participant connections in live mode
+    if (connInfo && connInfo.isLiveMode) {
+      // Notify others with same participant that someone left
+      for (const conn of this.party.getConnections()) {
+        if (conn.id === connection.id) continue;
+
+        const otherInfo = this.connectionInfo.get(conn.id);
+        if (otherInfo && otherInfo.participant === connInfo.participant) {
+          conn.send(JSON.stringify({
+            type: "user_left",
+            connectionId: connection.id,
+            participant: connInfo.participant
+          }));
+        }
+      }
+    }
+
     // Clean up connection info
     this.connectionInfo.delete(connection.id);
-
-    // Notify others that someone left
-    this.party.broadcast(JSON.stringify({
-      type: "user_left",
-      connectionId: connection.id
-    }));
   }
 
   // Helper method to broadcast to connections with the same participant
