@@ -1886,7 +1886,19 @@
             pollId = params.get('poll');
             const participantParam = params.get('participant');
             const liveParam = params.get('live');
-            const demoParam = params.get('demo');
+            let demoParam = params.get('demo');
+
+            // Auto-enable demo mode on Vercel preview deployments
+            // Preview URLs look like: project-hash-scope.vercel.app
+            // Production URL looks like: choosing-between-options.vercel.app
+            const hostname = window.location.hostname;
+            const isVercelPreview = hostname.endsWith('.vercel.app') &&
+                                    hostname !== 'choosing-between-options.vercel.app' &&
+                                    !hostname.startsWith('choosing-between-options.');
+            if (isVercelPreview && demoParam === null) {
+                demoParam = 'true';
+                console.log('[DEBUG] Vercel preview detected, auto-enabling demo mode');
+            }
 
             console.log('[DEBUG] initFromURL called');
             console.log('[DEBUG] pollId:', pollId);
