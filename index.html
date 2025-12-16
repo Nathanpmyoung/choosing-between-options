@@ -2070,9 +2070,8 @@
             if (isLive) {
                 isLiveMode = true;
                 currentParticipant = '__live__';
-            } else {
-                currentParticipant = 'Demo User';
             }
+            // For survey mode, let user enter their name
 
             // Update URL to include poll ID
             const newUrl = new URL(window.location);
@@ -2127,8 +2126,15 @@
             // Show admin link
             document.getElementById('adminViewResultsFromTier').style.display = 'block';
 
-            // Go to tier screen
-            showScreen('tierScreen');
+            // Go to appropriate screen
+            if (isLive) {
+                // Live mode goes straight to tiers
+                showScreen('tierScreen');
+            } else {
+                // Survey mode shows name entry first
+                document.getElementById('participantScreen').querySelector('h1').textContent = 'Demo Mode';
+                showScreen('participantScreen');
+            }
 
             console.log('[DEMO] Demo loaded with poll:', pollId);
         }
