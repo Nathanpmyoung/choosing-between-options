@@ -4623,8 +4623,14 @@
             }
         }
 
+        function getDisplayName(participantName) {
+            // Show friendly name for live sessions
+            return participantName === '__live__' ? 'Live Session' : participantName;
+        }
+
         function showThankYou(ranking) {
-            document.getElementById('thankYouName').textContent = `Thanks, ${currentParticipant}!`;
+            const displayName = getDisplayName(currentParticipant);
+            document.getElementById('thankYouName').textContent = isLiveMode ? 'Session Complete!' : `Thanks, ${displayName}!`;
             const thankYouList = document.getElementById('thankYouRanking');
             thankYouList.innerHTML = ranking.map((item, idx) => `
                 <li class="ranking-item">
@@ -4657,19 +4663,25 @@
 
             // Show participant toggles
             const togglesDiv = document.getElementById('participantToggles');
-            togglesDiv.innerHTML = pollData.participants.map((p, idx) => `
+            togglesDiv.innerHTML = pollData.participants.map((p, idx) => {
+                const displayName = getDisplayName(p.name);
+                const isLive = p.name === '__live__';
+                return `
                 <div class="participant-toggle">
                     <input type="checkbox" id="participant-${idx}"
                            ${p.enabled ? 'checked' : ''}
                            onchange="toggleParticipant('${p.name}')">
-                    <label for="participant-${idx}">${p.name} (${new Date(p.timestamp).toLocaleDateString()})</label>
+                    <label for="participant-${idx}">${isLive ? '🔴 ' : ''}${displayName} (${new Date(p.timestamp).toLocaleDateString()})</label>
                     ${isAdmin ? `<button class="delete-btn" onclick="deleteParticipant('${p.name}')">Delete</button>` : ''}
                 </div>
-            `).join('');
+            `}).join('');
 
             // Show individual rankings
             const individualDiv = document.getElementById('individualRankings');
             individualDiv.innerHTML = pollData.participants.map(p => {
+                const displayName = getDisplayName(p.name);
+                const isLive = p.name === '__live__';
+
                 // Get ranking - use stored ranking if available, or create from tiers/multipliers
                 const ranking = p.ranking || options.map((option, idx) => ({
                     option,
@@ -4681,7 +4693,7 @@
 
                 return `
                     <div class="section">
-                        <h3>${p.name}'s Rankings ${isAdmin ? `<button class="secondary" style="font-size: 0.9rem; padding: 5px 15px; margin-left: 15px;" onclick="editParticipant('${p.name}')">Edit</button>` : ''}</h3>
+                        <h3>${isLive ? '🔴 ' : ''}${displayName}'s Rankings ${isAdmin ? `<button class="secondary" style="font-size: 0.9rem; padding: 5px 15px; margin-left: 15px;" onclick="editParticipant('${p.name}')">Edit</button>` : ''}</h3>
                         <div class="ranking-header">
                             <span class="ranking-header-rank">#</span>
                             <span class="ranking-header-tier">Tier</span>
