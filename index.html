@@ -495,8 +495,50 @@
             margin-left: 10px;
         }
 
-        .tier-selection {
+        .tier-layout {
+            display: flex;
+            gap: 20px;
             margin: 20px 0;
+        }
+
+        .unassigned-sidebar {
+            width: 200px;
+            min-width: 200px;
+            background: #e9ecef;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            max-height: 600px;
+        }
+
+        .unassigned-header {
+            background: #6c757d;
+            color: white;
+            padding: 12px 15px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+
+        .unassigned-items {
+            flex: 1;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+            min-height: 100px;
+        }
+
+        .unassigned-items .draggable-item {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .tier-selection {
+            flex: 1;
+            margin: 0;
         }
 
         .tier-row {
@@ -552,6 +594,53 @@
         .draggable-item.dragging {
             opacity: 0.5;
             transform: rotate(3deg);
+        }
+
+        .draggable-item .item-content {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .draggable-item .item-label {
+            flex: 1;
+        }
+
+        .draggable-item .multiplier-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            margin-left: 8px;
+        }
+
+        .draggable-item .multiplier-btn {
+            width: 20px;
+            height: 16px;
+            padding: 0;
+            border: 1px solid #ccc;
+            background: #f0f0f0;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 10px;
+            line-height: 14px;
+            color: #666;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .draggable-item .multiplier-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .draggable-item .multiplier-display {
+            font-size: 0.75rem;
+            color: #888;
+            margin-left: 4px;
+            min-width: 40px;
+            text-align: right;
         }
 
         .confidence-indicator {
@@ -638,6 +727,12 @@
         }
 
         .tier-row.drag-over .tier-items {
+            background: #e8f4ff;
+            border: 2px dashed #667eea;
+            border-radius: 5px;
+        }
+
+        .unassigned-sidebar.drag-over .unassigned-items {
             background: #e8f4ff;
             border: 2px dashed #667eea;
             border-radius: 5px;
@@ -1042,17 +1137,27 @@
         <!-- Screen 3: Share Link (Organizer) -->
         <div id="shareLinkScreen" class="screen">
             <h1>Poll Created!</h1>
-            <p class="subtitle">Share this link with friends to get their rankings</p>
+            <p class="subtitle">Share these links to collect rankings</p>
+
             <div class="share-link-box">
-                <h3>Share this link:</h3>
+                <h3>📋 Survey Link <span style="font-weight: normal; color: #666;">(each person ranks independently)</span></h3>
                 <div class="share-link">
                     <input type="text" id="shareLinkInput" readonly />
                     <button onclick="copyShareLink()">Copy</button>
                 </div>
             </div>
+
+            <div class="share-link-box" style="border-color: #4caf50;">
+                <h3>🔴 Live Link <span style="font-weight: normal; color: #666;">(everyone sees same screen - for calls)</span></h3>
+                <div class="share-link">
+                    <input type="text" id="liveLinkInput" readonly />
+                    <button onclick="copyLiveLink()">Copy</button>
+                </div>
+            </div>
+
             <div class="button-group">
-                <button id="continueMyComparisons" onclick="continueMyComparisons()" style="display: none;">Continue My Comparisons</button>
                 <button onclick="startMyRanking()">Do My Own Ranking</button>
+                <button onclick="startLiveSession()">Start Live Session</button>
                 <button class="secondary" onclick="viewResults()">View Results</button>
                 <button class="secondary" onclick="startAsOrganizer()">Create New Poll</button>
             </div>
@@ -1076,40 +1181,46 @@
         <!-- Screen 5: Tier Selection -->
         <div id="tierScreen" class="screen">
             <h1>Assign Value Tiers</h1>
-            <p class="subtitle">Drag options into tiers (1000x is highest value, 0.001x is lowest)</p>
-            <div class="tier-selection" id="tierSelection">
-                <div class="tier-row" data-tier="S">
-                    <div class="tier-header tier-S">1000x</div>
-                    <div class="tier-items" id="tier-items-S"></div>
+            <p class="subtitle">Drag options from the left into tiers</p>
+            <div class="tier-layout">
+                <div class="unassigned-sidebar" data-tier="unassigned">
+                    <div class="unassigned-header">Unassigned</div>
+                    <div class="unassigned-items" id="unassigned-items"></div>
                 </div>
-                <div class="tier-row" data-tier="A">
-                    <div class="tier-header tier-A">100x</div>
-                    <div class="tier-items" id="tier-items-A"></div>
-                </div>
-                <div class="tier-row" data-tier="B">
-                    <div class="tier-header tier-B">10x</div>
-                    <div class="tier-items" id="tier-items-B"></div>
-                </div>
-                <div class="tier-row" data-tier="C">
-                    <div class="tier-header tier-C">1x</div>
-                    <div class="tier-items" id="tier-items-C"></div>
-                </div>
-                <div class="tier-row" data-tier="D">
-                    <div class="tier-header tier-D">0.1x</div>
-                    <div class="tier-items" id="tier-items-D"></div>
-                </div>
-                <div class="tier-row" data-tier="E">
-                    <div class="tier-header tier-E">0.01x</div>
-                    <div class="tier-items" id="tier-items-E"></div>
-                </div>
-                <div class="tier-row" data-tier="F">
-                    <div class="tier-header tier-F">0.001x</div>
-                    <div class="tier-items" id="tier-items-F"></div>
+                <div class="tier-selection" id="tierSelection">
+                    <div class="tier-row" data-tier="S">
+                        <div class="tier-header tier-S">1000x</div>
+                        <div class="tier-items" id="tier-items-S"></div>
+                    </div>
+                    <div class="tier-row" data-tier="A">
+                        <div class="tier-header tier-A">100x</div>
+                        <div class="tier-items" id="tier-items-A"></div>
+                    </div>
+                    <div class="tier-row" data-tier="B">
+                        <div class="tier-header tier-B">10x</div>
+                        <div class="tier-items" id="tier-items-B"></div>
+                    </div>
+                    <div class="tier-row" data-tier="C">
+                        <div class="tier-header tier-C">1x</div>
+                        <div class="tier-items" id="tier-items-C"></div>
+                    </div>
+                    <div class="tier-row" data-tier="D">
+                        <div class="tier-header tier-D">0.1x</div>
+                        <div class="tier-items" id="tier-items-D"></div>
+                    </div>
+                    <div class="tier-row" data-tier="E">
+                        <div class="tier-header tier-E">0.01x</div>
+                        <div class="tier-items" id="tier-items-E"></div>
+                    </div>
+                    <div class="tier-row" data-tier="F">
+                        <div class="tier-header tier-F">0.001x</div>
+                        <div class="tier-items" id="tier-items-F"></div>
+                    </div>
                 </div>
             </div>
             <div class="button-group">
                 <button class="secondary" onclick="goBackToName()">Back</button>
-                <button id="continueToComparisonsBtn" onclick="continueToComparisons()">Continue</button>
+                <button id="continueToComparisonsBtn" onclick="finishTierAssignment()">Finish</button>
             </div>
             <div id="adminViewResultsFromTier" style="display: none; margin-top: 20px; text-align: center;">
                 <span class="start-over" onclick="viewResults()">View Results (Admin)</span>
@@ -1119,8 +1230,8 @@
         <!-- Screen 5.75: Probability Assignment -->
         <div id="probabilityScreen" class="screen">
             <h1>Assign Probabilities</h1>
-            <p class="subtitle">Counterfactual additional chance by Nathan working on it for 18 months</p>
-            <p class="help-text">Drag options vertically to set their probability (100% = certain, 0% = impossible). Horizontal position doesn't matter.</p>
+            <p class="subtitle">How likely is each outcome?</p>
+            <p class="help-text">Drag options vertically to set their probability (100% = certain, 0% = impossible).</p>
             <div class="probability-container">
                 <div class="probability-scale">
                     <div class="probability-marker" style="top: 0%">100%</div>
@@ -1134,8 +1245,8 @@
                 </div>
             </div>
             <div class="button-group">
-                <button class="secondary" onclick="backToComparison()">Back</button>
-                <button onclick="startProbabilityComparisons()">Continue</button>
+                <button class="secondary" onclick="backToTiersFromProbability()">Back to Tiers</button>
+                <button onclick="finishProbabilityAssignment()">Finish</button>
             </div>
         </div>
 
@@ -1299,7 +1410,7 @@
                     <span class="ranking-header-tier">Tier</span>
                     <span class="ranking-header-entry">Entry</span>
                     <span class="ranking-header-multiple">Multiple</span>
-                    <span class="ranking-header-probability">Avg Prob</span>
+                    <span class="ranking-header-probability">Prob</span>
                 </div>
                 <ol class="ranking-list" id="groupRanking"></ol>
             </div>
@@ -1326,7 +1437,6 @@
             </div>
 
             <div class="button-group">
-                <button onclick="viewAllCharts()">View Charts</button>
                 <button class="secondary" onclick="exportData()">Export Data</button>
                 <button id="generateParticipantLinkBtn" style="display: none;" onclick="generateParticipantLink()">Generate Participant Link</button>
                 <button id="editOptionsBtn" style="display: none;" class="edit-options-btn" onclick="editOptions()">Edit Options</button>
@@ -1399,11 +1509,12 @@
 
             partyConnection.onopen = () => {
                 console.log('PartyKit connected for room:', roomId);
-                // Identify this connection with participant name and admin status
+                // Identify this connection with participant name, admin status, and live mode
                 partyConnection.send(JSON.stringify({
                     type: 'identify',
                     participant: currentParticipant,
-                    isAdmin: isAdmin
+                    isAdmin: isAdmin,
+                    isLiveMode: isLiveMode
                 }));
                 // Request initial sync
                 partyConnection.send(JSON.stringify({ type: 'request_sync' }));
@@ -1424,9 +1535,10 @@
 
             partyConnection.onclose = () => {
                 console.log('PartyKit connection closed');
-                // Reconnect after 3 seconds
+                // Reconnect after 3 seconds if still on same poll and participant
                 setTimeout(() => {
-                    if (pollId === roomId) {
+                    const expectedRoom = `${pollId}_${currentParticipant}`;
+                    if (roomId === expectedRoom) {
                         connectToPartyKit(roomId);
                     }
                 }, 3000);
@@ -1480,12 +1592,13 @@
                         if (data.tiers) {
                             tiers = data.tiers;
                             manualTiers = data.manualTiers || manualTiers;
+                            customMultipliers = data.customMultipliers || customMultipliers;
 
                             // Refresh tier screen if active
                             const currentScreen = document.querySelector('.screen.active');
                             if (currentScreen) {
                                 if (currentScreen.id === 'tierScreen') {
-                                    populateTiersWithConfidence();
+                                    populateTiersFromState();
                                 } else if (currentScreen.id === 'resultsScreen') {
                                     viewResults(); // Refresh results screen
                                 }
@@ -1624,7 +1737,8 @@
             partyConnection.send(JSON.stringify({
                 type: 'tier_changed',
                 tiers,
-                manualTiers
+                manualTiers,
+                customMultipliers
             }));
         }
 
@@ -1747,29 +1861,25 @@
         const DATA_VERSION = 2; // Increment when breaking changes are made
 
         // Global state
-        let currentParticipant = '';
+        let currentParticipant = ''; // Session identifier (unique ID for survey, participant name for live)
+        let displayName = ''; // Human-readable name shown in results
         let options = [];
         let comparisons = [];
         let drawnPairs = []; // Pairs that user marked as draws (equal)
         let pollId = '';
         let isOrganizer = false;
         let isAdmin = false;
+        let isLiveMode = false; // Collaborative mode - everyone sees same state
         let tiers = {}; // Maps option index to tier (S, A, B, C, D, E, F)
         let manualTiers = {}; // Tracks which option tiers have been manually set (to prevent auto-reassignment)
         let currentTier = null;
+        let customMultipliers = {}; // Maps option index to custom multiplier value (overrides tier default)
         let probabilities = {}; // Maps option index to probability (0.0 to 1.0)
 
-        // Chart viewing state
-        let chartParticipants = []; // Array of all participants for chart viewing
-        let currentChartIndex = 0; // Current participant being viewed in chart
-
-        // Probability comparison state
-        let probabilityComparisons = []; // Array of {winner, loser} for probability comparisons
-        let drawnProbabilityPairs = []; // Pairs marked as equal probability
-
-        // Bounds tracking for multiplier comparisons
-        let lowerBounds = {}; // Maps option index to log(lower bound)
-        let upperBounds = {}; // Maps option index to log(upper bound)
+        // Generate unique session ID for survey mode
+        function generateSessionId() {
+            return 'session_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 9);
+        }
 
         // Data migration system
         function migrateData() {
@@ -1836,10 +1946,12 @@
             const params = new URLSearchParams(window.location.search);
             pollId = params.get('poll');
             const participantParam = params.get('participant');
+            const liveParam = params.get('live');
 
             console.log('[DEBUG] initFromURL called');
             console.log('[DEBUG] pollId:', pollId);
             console.log('[DEBUG] participantParam:', participantParam);
+            console.log('[DEBUG] liveParam:', liveParam);
 
             // Check for debug mode parameter
             if (params.get('debug') === 'true') {
@@ -1850,15 +1962,40 @@
                 console.log('Debug mode disabled.');
             }
 
+            // Check for live/collaborative mode
+            if (liveParam === 'true') {
+                isLiveMode = true;
+                // Use participant param as session name, or default to '__live__'
+                currentParticipant = (participantParam && participantParam.trim())
+                    ? participantParam.trim()
+                    : '__live__';
+                displayName = currentParticipant; // In live mode, participant name is the display name
+                console.log('[DEBUG] Live mode enabled, session:', currentParticipant);
+            }
+
             if (pollId) {
                 // Check if user is admin for this poll
                 isAdmin = checkAdmin(pollId);
                 console.log('[DEBUG] isAdmin:', isAdmin);
 
-                // If participant name in URL, auto-start session
-                if (participantParam && participantParam.trim()) {
+                // Live mode - skip name entry, go straight to tiers
+                if (isLiveMode) {
+                    console.log('[DEBUG] Live mode, loading poll and starting session');
+                    loadPollAndStartSession(pollId);
+                }
+                // If participant name in URL (non-live), auto-start session
+                else if (participantParam && participantParam.trim()) {
                     console.log('[DEBUG] Participant found in URL, calling loadPollAndStartSession');
-                    currentParticipant = participantParam.trim();
+                    const participantName = participantParam.trim();
+                    displayName = participantName;
+                    // Generate unique session ID for survey mode isolation
+                    const sessionKey = `session_${pollId}_${participantName}`;
+                    let sessionId = localStorage.getItem(sessionKey);
+                    if (!sessionId) {
+                        sessionId = generateSessionId();
+                        localStorage.setItem(sessionKey, sessionId);
+                    }
+                    currentParticipant = sessionId;
                     console.log('[DEBUG] currentParticipant set to:', currentParticipant);
                     loadPollAndStartSession(pollId);
                 } else {
@@ -2022,6 +2159,7 @@
 
             // Set current participant to organizer name
             currentParticipant = organizerName;
+            displayName = organizerName;
             isOrganizer = true;
 
             // Update URL to include poll ID so PartyKit can connect
@@ -2029,34 +2167,28 @@
             newUrl.searchParams.set('poll', pollId);
             window.history.pushState({}, '', newUrl);
 
-            // Connect to PartyKit now that we have the poll ID in the URL
-            connectToPartyKit(pollId);
+            // Connect to PartyKit with room = pollId_participant (separate room per participant)
+            connectToPartyKit(`${pollId}_${currentParticipant}`);
 
             // Initialize for fresh start
             comparisons = [];
             drawnPairs = [];
 
-            // Initialize tiers - default all to C tier
+            // Initialize tiers - start all unassigned
             tiers = {};
             manualTiers = {};
-            options.forEach((_, idx) => {
-                tiers[idx] = 'C';
-            });
+            customMultipliers = {};
 
-            // Populate C tier with all items initially
-            const cTierContainer = document.getElementById('tier-items-C');
-            cTierContainer.innerHTML = options.map((option, idx) => {
-                return `
-                    <div class="draggable-item" draggable="true" data-option-idx="${idx}">
-                        ${option}
-                    </div>
-                `;
-            }).join('');
-
-            // Clear other tiers
-            ['S', 'A', 'B', 'D', 'E', 'F'].forEach(tier => {
+            // Clear all tier containers
+            ['S', 'A', 'B', 'C', 'D', 'E', 'F'].forEach(tier => {
                 document.getElementById(`tier-items-${tier}`).innerHTML = '';
             });
+
+            // Populate unassigned area with all items
+            const unassignedContainer = document.getElementById('unassigned-items');
+            unassignedContainer.innerHTML = options.map((option, idx) => {
+                return createTierItemHTML(idx, option);
+            }).join('');
 
             // Setup drag and drop
             setupDragAndDrop();
@@ -2078,7 +2210,31 @@
             const input = document.getElementById('shareLinkInput');
             input.select();
             document.execCommand('copy');
-            alert('Link copied to clipboard!');
+            alert('Survey link copied to clipboard!');
+        }
+
+        function copyLiveLink() {
+            const input = document.getElementById('liveLinkInput');
+            input.select();
+            document.execCommand('copy');
+            alert('Live link copied to clipboard!');
+        }
+
+        function updateShareLinks() {
+            const baseUrl = `${window.location.origin}${window.location.pathname}`;
+            const surveyUrl = `${baseUrl}?poll=${pollId}`;
+            const liveUrl = `${baseUrl}?poll=${pollId}&live=true`;
+
+            document.getElementById('shareLinkInput').value = surveyUrl;
+            document.getElementById('liveLinkInput').value = liveUrl;
+        }
+
+        function startLiveSession() {
+            // Start the live collaborative session
+            isLiveMode = true;
+            currentParticipant = '__live__';
+            displayName = '__live__';
+            loadPollAndStartSession(pollId);
         }
 
         function startMyRanking() {
@@ -2154,8 +2310,8 @@
 
             options = pollData.options;
 
-            // Connect to PartyKit for real-time collaboration
-            connectToPartyKit(id);
+            // Don't connect to PartyKit yet - wait until user enters their name
+            // This prevents state sync issues when viewing the share link
 
             // Show admin link if user is admin
             if (isAdmin) {
@@ -2178,8 +2334,8 @@
 
             options = pollData.options;
 
-            // Connect to PartyKit for real-time collaboration
-            connectToPartyKit(id);
+            // Connect to PartyKit with room = pollId_participant (separate room per participant)
+            connectToPartyKit(`${id}_${currentParticipant}`);
 
             // Show admin link if user is admin
             if (isAdmin) {
@@ -2205,24 +2361,18 @@
                 populateTiersWithConfidence();
                 showScreen('tierScreen');
             } else {
-                // Start fresh ranking session - initialize and go to tier screen
+                // Start fresh ranking session - all items start unassigned
                 comparisons = [];
                 drawnPairs = [];
                 tiers = {};
                 lowerBounds = {};
                 upperBounds = {};
+                manualTiers = {};
+                customMultipliers = {};
 
-                // Initialize all options with default tier C
-                options.forEach((_, idx) => {
-                    tiers[idx] = 'C';
-                    lowerBounds[idx] = 3; // log10(1000) = 3
-                    upperBounds[idx] = 3;
-                });
-
-                // Save initial state so participant appears in the list immediately
-                saveProgress();
-
-                populateTiersWithConfidence();
+                // Don't save yet - let user make assignments first
+                // Show tier screen with items in unassigned
+                populateTiersFromState();
                 showScreen('tierScreen');
             }
         }
@@ -2257,6 +2407,7 @@
 
             if (progressData && foundName) {
                 currentParticipant = foundName;
+                displayName = progressData.displayName || foundName; // Use saved display name if available
                 tiers = progressData.tiers || [];
                 manualTiers = progressData.manualTiers || {};
                 probabilities = progressData.probabilities || {};
@@ -2264,6 +2415,11 @@
                 drawnPairs = progressData.drawnPairs || [];
                 lowerBounds = progressData.lowerBounds || {};
                 upperBounds = progressData.upperBounds || {};
+
+                // Connect to PartyKit with room = pollId_participant (separate room per participant)
+                if (pollId) {
+                    connectToPartyKit(`${pollId}_${currentParticipant}`);
+                }
 
                 // Figure out where to resume from
                 if (comparisons.length > 0 && Object.keys(probabilities).length > 0) {
@@ -2290,52 +2446,64 @@
                     alert('Please enter your name');
                     return;
                 }
-                currentParticipant = name;
+                displayName = name;
+
+                // For survey mode (not live), use unique session ID for isolation
+                // For live mode, use participant name so multiple people share the session
+                if (isLiveMode) {
+                    currentParticipant = name;
+                } else {
+                    // Check if this name already has a session ID for this poll
+                    const sessionKey = `session_${pollId}_${name}`;
+                    let sessionId = localStorage.getItem(sessionKey);
+                    if (!sessionId) {
+                        // Generate new unique session ID
+                        sessionId = generateSessionId();
+                        localStorage.setItem(sessionKey, sessionId);
+                    }
+                    currentParticipant = sessionId;
+                }
+            }
+
+            // Connect to PartyKit with room = pollId_participant (separate room per participant)
+            if (pollId) {
+                connectToPartyKit(`${pollId}_${currentParticipant}`);
             }
 
             // Check if there's saved progress
             const hasSavedProgress = loadProgress();
 
             if (hasSavedProgress) {
-                // Ask if user wants to resume
-                if (confirm('You have saved progress. Would you like to resume where you left off?')) {
-                    // Resume from saved progress - go directly to comparisons
-                    startComparisons(false);
-                    return;
-                } else {
-                    // Start fresh - clear saved progress
-                    clearProgress();
+                // Resume from saved progress - show tier screen with saved state
+                populateTiersFromState();
+                showScreen('tierScreen');
+
+                // Show admin link if user is admin
+                if (isAdmin) {
+                    document.getElementById('adminViewResultsFromTier').style.display = 'block';
                 }
+                return;
             }
 
             // Initialize for fresh start
             comparisons = [];
             drawnPairs = [];
 
-            // Initialize tiers - default all to C tier
+            // Initialize tiers - start all unassigned
             tiers = {};
             manualTiers = {};
-            options.forEach((_, idx) => {
-                tiers[idx] = 'C';
-            });
+            customMultipliers = {};
 
-            // Initialize bounds for each item (in log-space)
-            initializeBounds();
-
-            // Populate C tier with all items initially (no prices shown initially)
-            const cTierContainer = document.getElementById('tier-items-C');
-            cTierContainer.innerHTML = options.map((option, idx) => {
-                return `
-                    <div class="draggable-item" draggable="true" data-option-idx="${idx}">
-                        ${option}
-                    </div>
-                `;
-            }).join('');
-
-            // Clear other tiers
-            ['S', 'A', 'B', 'D', 'E', 'F'].forEach(tier => {
+            // Clear all tier containers
+            ['S', 'A', 'B', 'C', 'D', 'E', 'F'].forEach(tier => {
                 document.getElementById(`tier-items-${tier}`).innerHTML = '';
             });
+
+            // Populate unassigned area with all items
+            const unassignedContainer = document.getElementById('unassigned-items');
+            unassignedContainer.innerHTML = options.map((option, idx) => {
+                return createTierItemHTML(idx, option);
+            }).join('');
 
             // Setup drag and drop
             setupDragAndDrop();
@@ -2348,20 +2516,24 @@
             showScreen('tierScreen');
         }
 
-        function setupDragAndDrop() {
-            let draggedElement = null;
+        let draggedElement = null; // Move to outer scope for access in helper
 
+        function setupDragEventsForItem(item) {
+            item.addEventListener('dragstart', (e) => {
+                draggedElement = item;
+                item.classList.add('dragging');
+            });
+
+            item.addEventListener('dragend', (e) => {
+                item.classList.remove('dragging');
+                draggedElement = null;
+            });
+        }
+
+        function setupDragAndDrop() {
             // Add drag event listeners to all draggable items
             document.querySelectorAll('.draggable-item').forEach(item => {
-                item.addEventListener('dragstart', (e) => {
-                    draggedElement = item;
-                    item.classList.add('dragging');
-                });
-
-                item.addEventListener('dragend', (e) => {
-                    item.classList.remove('dragging');
-                    draggedElement = null;
-                });
+                setupDragEventsForItem(item);
             });
 
             // Add drop zone event listeners to all tier rows
@@ -2381,36 +2553,229 @@
 
                     if (draggedElement) {
                         const tier = row.dataset.tier;
-                        const optionIdx = draggedElement.dataset.optionIdx;
+                        const optionIdx = parseInt(draggedElement.dataset.optionIdx);
                         const tierItems = row.querySelector('.tier-items');
 
                         // Update tiers mapping
                         tiers[optionIdx] = tier;
 
-                        // Mark this tier as manually set ONLY if comparisons have started
-                        // Initial tier assignment should allow auto-reassignment based on Bradley-Terry
-                        if (comparisons && comparisons.length > 0) {
-                            manualTiers[optionIdx] = tier;
-                        }
+                        // When moving to a new tier, reset custom multiplier to tier default
+                        delete customMultipliers[optionIdx];
 
                         // Sync tier change to PartyKit for real-time collaboration
                         syncTierChangeToPartyKit();
 
-                        // Extract option text
+                        // Update the element with new multiplier display
                         const optionText = options[optionIdx];
+                        draggedElement.outerHTML = createTierItemHTML(optionIdx, optionText);
 
-                        // Update the element's display (no price on initial tier assignment)
-                        draggedElement.innerHTML = `${optionText}`;
+                        // Re-get the element after replacing HTML
+                        const newElement = document.querySelector(`[data-option-idx="${optionIdx}"]`);
+                        tierItems.appendChild(newElement);
 
-                        // Move the element to new tier
-                        tierItems.appendChild(draggedElement);
+                        // Re-setup drag events for the new element
+                        setupDragEventsForItem(newElement);
+
+                        // Save progress
+                        saveProgress();
                     }
                 });
             });
+
+            // Add drop zone event listeners for unassigned sidebar
+            const unassignedSidebar = document.querySelector('.unassigned-sidebar');
+            if (unassignedSidebar) {
+                unassignedSidebar.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    unassignedSidebar.classList.add('drag-over');
+                });
+
+                unassignedSidebar.addEventListener('dragleave', (e) => {
+                    unassignedSidebar.classList.remove('drag-over');
+                });
+
+                unassignedSidebar.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    unassignedSidebar.classList.remove('drag-over');
+
+                    if (draggedElement) {
+                        const optionIdx = parseInt(draggedElement.dataset.optionIdx);
+                        const unassignedItems = document.getElementById('unassigned-items');
+
+                        // Remove from tiers mapping (mark as unassigned)
+                        delete tiers[optionIdx];
+                        delete customMultipliers[optionIdx];
+
+                        // Sync change to PartyKit
+                        syncTierChangeToPartyKit();
+
+                        // Update the element
+                        const optionText = options[optionIdx];
+                        draggedElement.outerHTML = createTierItemHTML(optionIdx, optionText);
+
+                        // Re-get the element after replacing HTML
+                        const newElement = document.querySelector(`[data-option-idx="${optionIdx}"]`);
+                        unassignedItems.appendChild(newElement);
+
+                        // Re-setup drag events
+                        setupDragEventsForItem(newElement);
+
+                        // Save progress
+                        saveProgress();
+                    }
+                });
+            }
         }
 
         function goBackToName() {
             showScreen('nameScreen');
+        }
+
+        // Tier multiplier base values
+        const tierBaseMultipliers = {
+            'S': 1000, 'A': 100, 'B': 10, 'C': 1,
+            'D': 0.1, 'E': 0.01, 'F': 0.001
+        };
+
+        function getMultiplierForOption(idx) {
+            // Return custom multiplier if set, otherwise tier base
+            if (customMultipliers[idx] !== undefined) {
+                return customMultipliers[idx];
+            }
+            return tierBaseMultipliers[tiers[idx] || 'C'];
+        }
+
+        function formatMultiplier(mult) {
+            if (mult === null || mult === undefined) {
+                return '—';
+            }
+            if (mult >= 1) {
+                return mult % 1 === 0 ? `${mult}x` : `${mult.toFixed(1)}x`;
+            } else {
+                const inverse = Math.round(1 / mult);
+                return `1/${inverse}`;
+            }
+        }
+
+        function createTierItemHTML(idx, optionText) {
+            const multiplier = getMultiplierForOption(idx);
+            return `
+                <div class="draggable-item" draggable="true" data-option-idx="${idx}">
+                    <div class="item-content">
+                        <span class="item-label">${optionText}</span>
+                        <span class="multiplier-display" id="mult-display-${idx}">${formatMultiplier(multiplier)}</span>
+                        <div class="multiplier-controls">
+                            <button class="multiplier-btn" onclick="event.stopPropagation(); adjustMultiplier(${idx}, 'up')" title="Increase multiplier">▲</button>
+                            <button class="multiplier-btn" onclick="event.stopPropagation(); adjustMultiplier(${idx}, 'down')" title="Decrease multiplier">▼</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function adjustMultiplier(idx, direction) {
+            // Get current multiplier
+            let currentMult = getMultiplierForOption(idx);
+            const currentTier = tiers[idx] || 'C';
+
+            // Define multiplier steps (powers of 10 and half-steps)
+            const steps = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
+
+            // Find closest step
+            let closestIdx = 0;
+            let closestDiff = Math.abs(Math.log10(steps[0]) - Math.log10(currentMult));
+            for (let i = 1; i < steps.length; i++) {
+                const diff = Math.abs(Math.log10(steps[i]) - Math.log10(currentMult));
+                if (diff < closestDiff) {
+                    closestDiff = diff;
+                    closestIdx = i;
+                }
+            }
+
+            // Move to next/prev step
+            let newIdx = direction === 'up' ? closestIdx + 1 : closestIdx - 1;
+            newIdx = Math.max(0, Math.min(steps.length - 1, newIdx));
+
+            const newMult = steps[newIdx];
+            customMultipliers[idx] = newMult;
+
+            // Check if we need to move to a different tier
+            // Tier thresholds: S>=1000, A>=100, B>=10, C>=1, D>=0.1, E>=0.01, F<0.01
+            const tierOrder = ['F', 'E', 'D', 'C', 'B', 'A', 'S'];
+            const tierThresholds = { 'S': 1000, 'A': 100, 'B': 10, 'C': 1, 'D': 0.1, 'E': 0.01, 'F': 0 };
+
+            let newTier = 'F';
+            for (const tier of ['S', 'A', 'B', 'C', 'D', 'E']) {
+                if (newMult >= tierThresholds[tier]) {
+                    newTier = tier;
+                    break;
+                }
+            }
+
+            // If tier changed, move the item in the UI
+            if (newTier !== currentTier) {
+                tiers[idx] = newTier;
+
+                // Move element to new tier container
+                const optionText = options[idx];
+                const oldElement = document.querySelector(`[data-option-idx="${idx}"]`);
+                if (oldElement) {
+                    oldElement.remove();
+                }
+
+                const newTierContainer = document.getElementById(`tier-items-${newTier}`);
+                newTierContainer.innerHTML += createTierItemHTML(idx, optionText);
+
+                // Re-setup drag events for the new element
+                const newElement = document.querySelector(`[data-option-idx="${idx}"]`);
+                if (newElement) {
+                    setupDragEventsForItem(newElement);
+                }
+            } else {
+                // Just update the display
+                const display = document.getElementById(`mult-display-${idx}`);
+                if (display) {
+                    display.textContent = formatMultiplier(newMult);
+                }
+            }
+
+            // Save progress
+            saveProgress();
+
+            // Sync to PartyKit
+            syncTierChangeToPartyKit();
+        }
+
+        function finishTierAssignment() {
+            // Save final state
+            saveProgress();
+
+            // Go to probability assignment screen
+            goToProbabilityScreen();
+        }
+
+        function populateTiersFromState() {
+            // Clear all tier containers including unassigned
+            ['S', 'A', 'B', 'C', 'D', 'E', 'F'].forEach(tier => {
+                document.getElementById(`tier-items-${tier}`).innerHTML = '';
+            });
+            document.getElementById('unassigned-items').innerHTML = '';
+
+            // Populate tiers based on saved state (unassigned items go to unassigned area)
+            options.forEach((option, idx) => {
+                const tier = tiers[idx];
+                if (tier && tier !== 'unassigned') {
+                    const tierContainer = document.getElementById(`tier-items-${tier}`);
+                    tierContainer.innerHTML += createTierItemHTML(idx, option);
+                } else {
+                    // No tier assigned - put in unassigned area
+                    const unassignedContainer = document.getElementById('unassigned-items');
+                    unassignedContainer.innerHTML += createTierItemHTML(idx, option);
+                }
+            });
+
+            // Setup drag and drop for all items
+            setupDragAndDrop();
         }
 
         function showTierVerification() {
@@ -2568,6 +2933,35 @@
             showScreen('probabilityScreen');
         }
 
+        function backToTiersFromProbability() {
+            // Go back to tier selection, keeping current state
+            populateTiersFromState();
+            showScreen('tierScreen');
+        }
+
+        function finishProbabilityAssignment() {
+            // Save final state
+            saveProgress();
+
+            // Create ranking from tiers, multipliers, and probabilities
+            const ranking = options.map((option, idx) => ({
+                option,
+                multiplier: getMultiplierForOption(idx),
+                tier: tiers[idx] || 'C',
+                probability: probabilities[idx] || 0.5
+            })).sort((a, b) => b.multiplier - a.multiplier);
+
+            // Show appropriate screen based on user type
+            if (isOrganizer) {
+                // Organizer sees share link screen
+                updateShareLinks();
+                showScreen('shareLinkScreen');
+            } else {
+                // Regular participant or live mode - show thank you
+                showThankYou(ranking);
+            }
+        }
+
         function setupProbabilityDragAndDrop() {
             const dropZone = document.getElementById('probabilityDropZone');
             let draggedElement = null;
@@ -2641,8 +3035,7 @@
         function finishRanking() {
             saveProgress();
             if (isOrganizer) {
-                const shareUrl = `${window.location.origin}${window.location.pathname}?poll=${pollId}`;
-                document.getElementById('shareLinkInput').value = shareUrl;
+                updateShareLinks();
                 showScreen('shareLinkScreen');
             } else {
                 saveParticipantData();
@@ -4017,15 +4410,11 @@
             const progressKey = `progress_${pollId}_${currentParticipant}`;
             const progressData = {
                 participant: currentParticipant,
+                displayName: displayName || currentParticipant, // Store display name for results
                 tiers: tiers,
                 manualTiers: manualTiers,
+                customMultipliers: customMultipliers,
                 probabilities: probabilities,
-                comparisons: comparisons,
-                drawnPairs: drawnPairs,
-                probabilityComparisons: probabilityComparisons,
-                drawnProbabilityPairs: drawnProbabilityPairs,
-                lowerBounds: lowerBounds,
-                upperBounds: upperBounds,
                 timestamp: new Date().toISOString()
             };
             localStorage.setItem(progressKey, JSON.stringify(progressData));
@@ -4038,60 +4427,47 @@
 
         async function saveParticipantData() {
             // Save current progress as participant data to the poll
-            // This ensures partial responses are captured even if user doesn't complete all comparisons
             if (!currentParticipant || !pollId) {
                 return; // No participant or poll ID set
             }
 
-            // Skip if we have neither tiers nor comparisons (nothing to save)
+            // Skip if we have no tiers (nothing to save)
             const hasTiers = tiers && Object.keys(tiers).length > 0;
-            const hasComparisons = comparisons && comparisons.length > 0;
-            if (!hasTiers && !hasComparisons) {
+            if (!hasTiers) {
                 return; // Nothing to save yet
             }
 
-            const tierBasePrices = {
-                S: 1000000, A: 100000, B: 10000, C: 1000, D: 100, E: 10, F: 1
-            };
-
-            // Calculate current ranking based on progress
-            let prices = new Array(options.length).fill(0);
-            options.forEach((_, idx) => {
-                const tier = tiers[idx] || 'C';
-                prices[idx] = tierBasePrices[tier];
-            });
-
-            const result = computeBradleyTerryPrices(prices, comparisons, tiers, manualTiers);
-            prices = result.prices;
-            const finalTiers = result.tiers;
-
+            // Create ranking based on tier, custom multipliers, and probabilities
             const ranking = options.map((option, idx) => ({
                 option,
-                rating: Math.round(prices[idx]),
-                tier: finalTiers[idx] || 'C'
-            })).sort((a, b) => b.rating - a.rating);
+                multiplier: getMultiplierForOption(idx),
+                tier: tiers[idx] || 'C',
+                probability: probabilities[idx] !== undefined ? probabilities[idx] : 0.5
+            })).sort((a, b) => b.multiplier - a.multiplier);
 
             // Save this participant's data to the poll
             const pollData = await loadPollData(pollId);
             if (!pollData) return; // Poll not found
 
-            // Convert probabilities object to array format
-            const probabilitiesArray = options.map((_, idx) => probabilities[idx] !== undefined ? probabilities[idx] : null);
-
             const participantData = {
-                name: currentParticipant,
+                name: displayName || currentParticipant, // Use display name for results
+                sessionId: currentParticipant, // Unique session identifier
                 timestamp: new Date().toISOString(),
-                comparisons: comparisons,
                 ranking: ranking,
-                tiers: finalTiers,
-                probabilities: probabilitiesArray,
-                lowerBounds: lowerBounds,
-                upperBounds: upperBounds,
+                tiers: tiers,
+                customMultipliers: customMultipliers,
+                probabilities: probabilities,
                 enabled: true
             };
 
-            // Remove existing submission from this participant and add updated one
-            pollData.participants = pollData.participants.filter(p => p.name !== currentParticipant);
+            // Remove existing submission from this session (use sessionId for unique identification)
+            pollData.participants = pollData.participants.filter(p => {
+                // Match by sessionId if available, otherwise fall back to name for old data
+                if (p.sessionId) {
+                    return p.sessionId !== currentParticipant;
+                }
+                return p.name !== currentParticipant;
+            });
             pollData.participants.push(participantData);
             await savePollData(pollId, pollData);
         }
@@ -4103,15 +4479,14 @@
 
             if (savedProgress) {
                 const progressData = JSON.parse(savedProgress);
-                tiers = progressData.tiers;
+                tiers = progressData.tiers || {};
                 manualTiers = progressData.manualTiers || {};
+                customMultipliers = progressData.customMultipliers || {};
                 probabilities = progressData.probabilities || {};
-                comparisons = progressData.comparisons || [];
-                drawnPairs = progressData.drawnPairs || [];
-                probabilityComparisons = progressData.probabilityComparisons || [];
-                drawnProbabilityPairs = progressData.drawnProbabilityPairs || [];
-                lowerBounds = progressData.lowerBounds || {};
-                upperBounds = progressData.upperBounds || {};
+                // Restore display name if available
+                if (progressData.displayName) {
+                    displayName = progressData.displayName;
+                }
                 return true;
             }
             return false;
@@ -4340,6 +4715,7 @@
                 'E': '0.01x',
                 'F': '0.001x'
             };
+            if (!tierLetter) return '—';
             return tierMap[tierLetter] || tierLetter;
         }
 
@@ -4458,17 +4834,22 @@
             }
         }
 
+        function getDisplayName(participantName) {
+            // Show friendly name for live sessions
+            return participantName === '__live__' ? 'Live Session' : participantName;
+        }
+
         function showThankYou(ranking) {
-            document.getElementById('thankYouName').textContent = `Thanks, ${currentParticipant}!`;
-            const rankingWithMultipliers = calculateRelativeMultipliers(ranking);
+            const displayName = getDisplayName(currentParticipant);
+            document.getElementById('thankYouName').textContent = isLiveMode ? 'Session Complete!' : `Thanks, ${displayName}!`;
             const thankYouList = document.getElementById('thankYouRanking');
-            thankYouList.innerHTML = rankingWithMultipliers.map((item, idx) => `
+            thankYouList.innerHTML = ranking.map((item, idx) => `
                 <li class="ranking-item">
                     <span class="rank-number">${idx + 1}</span>
-                    <span class="tier-label">${item.tierLabel || getTierLabel(item.tier)}</span>
+                    <span class="tier-label">${getTierLabel(item.tier)}</span>
                     <span class="rank-name">${item.option}</span>
                     <span class="rank-score">
-                        <span class="rank-multiplier">${item.multiplierText || ''}</span>
+                        <span class="rank-multiplier">${formatMultiplier(item.multiplier)}</span>
                     </span>
                 </li>
             `).join('');
@@ -4476,51 +4857,11 @@
         }
 
         async function viewResults() {
-            console.log('[RESULTS] viewResults() called, pollId:', pollId, 'currentParticipant:', currentParticipant, 'comparisons:', comparisons?.length);
+            console.log('[RESULTS] viewResults() called, pollId:', pollId);
 
-            // If we have in-progress comparisons, save them as participant data first
-            if (currentParticipant && comparisons && comparisons.length > 0) {
-                // Calculate current ranking based on progress
-                const tierBasePrices = {
-                    S: 1000000, A: 100000, B: 10000, C: 1000, D: 100, E: 10, F: 1
-                };
-
-                let prices = new Array(options.length).fill(0);
-                options.forEach((_, idx) => {
-                    const tier = tiers[idx] || 'C';
-                    prices[idx] = tierBasePrices[tier];
-                });
-
-                const result = computeBradleyTerryPrices(prices, comparisons, tiers, manualTiers);
-                prices = result.prices;
-                const finalTiers = result.tiers;
-
-                const ranking = options.map((option, idx) => ({
-                    option,
-                    rating: Math.round(prices[idx]),
-                    tier: finalTiers[idx] || 'C'
-                })).sort((a, b) => b.rating - a.rating);
-
-                // Save this participant's data
-                const pollData = await loadPollData(pollId);
-
-                // Convert probabilities object to array format
-                const probabilitiesArray = options.map((_, idx) => probabilities[idx] || null);
-
-                const participantData = {
-                    name: currentParticipant,
-                    timestamp: new Date().toISOString(),
-                    comparisons: comparisons,
-                    ranking: ranking,
-                    tiers: finalTiers,
-                    probabilities: probabilitiesArray,
-                    enabled: true
-                };
-
-                // Remove existing submission from this participant and add new one
-                pollData.participants = pollData.participants.filter(p => p.name !== currentParticipant);
-                pollData.participants.push(participantData);
-                await savePollData(pollId, pollData);
+            // Save current participant's data
+            if (currentParticipant) {
+                await saveParticipantData();
             }
 
             const pollData = await loadPollData(pollId);
@@ -4533,46 +4874,60 @@
 
             // Show participant toggles
             const togglesDiv = document.getElementById('participantToggles');
-            togglesDiv.innerHTML = pollData.participants.map((p, idx) => `
+            togglesDiv.innerHTML = pollData.participants.map((p, idx) => {
+                const displayName = getDisplayName(p.name);
+                const isLive = p.name === '__live__';
+                return `
                 <div class="participant-toggle">
                     <input type="checkbox" id="participant-${idx}"
                            ${p.enabled ? 'checked' : ''}
                            onchange="toggleParticipant('${p.name}')">
-                    <label for="participant-${idx}">${p.name} (${new Date(p.timestamp).toLocaleDateString()})</label>
+                    <label for="participant-${idx}">${isLive ? '🔴 ' : ''}${displayName} (${new Date(p.timestamp).toLocaleDateString()})</label>
                     ${isAdmin ? `<button class="delete-btn" onclick="deleteParticipant('${p.name}')">Delete</button>` : ''}
                 </div>
-            `).join('');
+            `}).join('');
 
             // Show individual rankings
             const individualDiv = document.getElementById('individualRankings');
             individualDiv.innerHTML = pollData.participants.map(p => {
-                const rankingWithMultipliers = calculateRelativeMultipliers(p.ranking);
+                const displayName = getDisplayName(p.name);
+                const isLive = p.name === '__live__';
+
+                // Get ranking - use stored ranking if available, or create from tiers/multipliers
+                const ranking = p.ranking || options.map((option, idx) => {
+                    const tier = p.tiers && p.tiers[idx];
+                    return {
+                        option,
+                        multiplier: p.customMultipliers && p.customMultipliers[idx] !== undefined
+                            ? p.customMultipliers[idx]
+                            : (tier ? tierBaseMultipliers[tier] : null),
+                        tier: tier || null,
+                        probability: p.probabilities && p.probabilities[idx] !== undefined ? p.probabilities[idx] : 0.5
+                    };
+                }).sort((a, b) => (b.multiplier || 0) - (a.multiplier || 0));
+
                 return `
                     <div class="section">
-                        <h3>${p.name}'s Rankings ${isAdmin ? `<button class="secondary" style="font-size: 0.9rem; padding: 5px 15px; margin-left: 15px;" onclick="editParticipant('${p.name}')">Edit</button>` : ''}</h3>
+                        <h3>${isLive ? '🔴 ' : ''}${displayName}'s Rankings ${isAdmin ? `<button class="secondary" style="font-size: 0.9rem; padding: 5px 15px; margin-left: 15px;" onclick="editParticipant('${p.name}')">Edit</button>` : ''}</h3>
                         <div class="ranking-header">
                             <span class="ranking-header-rank">#</span>
                             <span class="ranking-header-tier">Tier</span>
                             <span class="ranking-header-entry">Entry</span>
                             <span class="ranking-header-multiple">Multiple</span>
-                            <span class="ranking-header-probability">Probability</span>
+                            <span class="ranking-header-probability">Prob</span>
                         </div>
                         <ol class="ranking-list">
-                            ${rankingWithMultipliers.map((item, idx) => {
-                                const probability = p.probabilities && p.probabilities[options.indexOf(item.option)];
-                                const probabilityText = probability !== undefined ? Math.round(probability * 100) + '%' : '-';
-                                return `
+                            ${ranking.map((item, idx) => `
                                 <li class="ranking-item">
                                     <span class="rank-number">${idx + 1}</span>
-                                    <span class="tier-label">${item.tierLabel || getTierLabel(item.tier)}</span>
+                                    <span class="tier-label">${getTierLabel(item.tier)}</span>
                                     <span class="rank-name">${item.option}</span>
                                     <span class="rank-score">
-                                        <span class="rank-multiplier">${item.multiplierText || ''}</span>
+                                        <span class="rank-multiplier">${formatMultiplier(item.multiplier)}</span>
                                     </span>
-                                    <span class="rank-probability">${probabilityText}</span>
+                                    <span class="rank-probability">${Math.round((item.probability || 0.5) * 100)}%</span>
                                 </li>
-                                `;
-                            }).join('')}
+                            `).join('')}
                         </ol>
                     </div>
                 `;
@@ -4677,9 +5032,8 @@
                 return;
             }
 
-            // Set up the share link
-            const shareUrl = `${window.location.origin}${window.location.pathname}?poll=${pollId}`;
-            document.getElementById('shareLinkInput').value = shareUrl;
+            // Set up the share links
+            updateShareLinks();
 
             // Show the share link screen
             showScreen('shareLinkScreen');
@@ -4700,7 +5054,8 @@
             }
 
             // Load their data into the current session
-            currentParticipant = name;
+            displayName = name;
+            currentParticipant = participant.sessionId || name; // Use sessionId if available
 
             // Convert tiers object/array to proper format
             tiers = {};
@@ -4806,23 +5161,23 @@
                 return;
             }
 
-            // Average rankings, tiers, and probabilities across participants
+            // Average multipliers, tiers, and probabilities across participants
             const aggregateData = {};
             options.forEach(option => {
-                aggregateData[option] = { totalRating: 0, tiers: [], probabilities: [] };
+                aggregateData[option] = { multipliers: [], tiers: [], probabilities: [] };
             });
 
             enabledParticipants.forEach(p => {
-                p.ranking.forEach(item => {
-                    aggregateData[item.option].totalRating += item.rating;
-                    if (item.tier) {
-                        aggregateData[item.option].tiers.push(item.tier);
-                    }
-                });
-                if (p.probabilities) {
-                    options.forEach((option, idx) => {
-                        if (p.probabilities[idx] !== undefined) {
-                            aggregateData[option].probabilities.push(p.probabilities[idx]);
+                if (p.ranking) {
+                    p.ranking.forEach(item => {
+                        if (aggregateData[item.option]) {
+                            aggregateData[item.option].multipliers.push(item.multiplier || tierBaseMultipliers[item.tier || 'C']);
+                            if (item.tier) {
+                                aggregateData[item.option].tiers.push(item.tier);
+                            }
+                            if (item.probability !== undefined && item.probability !== null) {
+                                aggregateData[item.option].probabilities.push(item.probability);
+                            }
                         }
                     });
                 }
@@ -4830,44 +5185,42 @@
 
             const groupRanking = Object.entries(aggregateData)
                 .map(([option, data]) => {
+                    // Calculate geometric mean of multipliers (more appropriate for ratios)
+                    const avgMultiplier = data.multipliers.length > 0
+                        ? Math.exp(data.multipliers.reduce((sum, m) => sum + Math.log(m), 0) / data.multipliers.length)
+                        : 1;
+
                     // Find most common tier
                     const tierCounts = {};
                     data.tiers.forEach(t => tierCounts[t] = (tierCounts[t] || 0) + 1);
                     const mostCommonTier = Object.keys(tierCounts).sort((a, b) => tierCounts[b] - tierCounts[a])[0] || 'C';
 
-                    // Calculate average probability
+                    // Calculate average probability (arithmetic mean)
                     const avgProbability = data.probabilities.length > 0
                         ? data.probabilities.reduce((sum, p) => sum + p, 0) / data.probabilities.length
                         : null;
 
                     return {
                         option,
-                        rating: Math.round(data.totalRating / enabledParticipants.length),
+                        multiplier: avgMultiplier,
                         tier: mostCommonTier,
-                        avgProbability: avgProbability
+                        probability: avgProbability
                     };
                 })
-                .sort((a, b) => b.rating - a.rating);
-
-            const groupRankingWithMultipliers = calculateRelativeMultipliers(groupRanking);
+                .sort((a, b) => b.multiplier - a.multiplier);
 
             const groupList = document.getElementById('groupRanking');
-            groupList.innerHTML = groupRankingWithMultipliers.map((item, idx) => {
-                const probabilityText = item.avgProbability !== null && item.avgProbability !== undefined
-                    ? Math.round(item.avgProbability * 100) + '%'
-                    : '-';
-                return `
+            groupList.innerHTML = groupRanking.map((item, idx) => `
                 <li class="ranking-item">
                     <span class="rank-number">${idx + 1}</span>
-                    <span class="tier-label">${item.tierLabel || getTierLabel(item.tier)}</span>
+                    <span class="tier-label">${getTierLabel(item.tier)}</span>
                     <span class="rank-name">${item.option}</span>
                     <span class="rank-score">
-                        <span class="rank-multiplier">${item.multiplierText || ''}</span>
+                        <span class="rank-multiplier">${formatMultiplier(item.multiplier)}</span>
+                        ${item.probability !== null ? `<span class="rank-probability">${Math.round(item.probability)}%</span>` : ''}
                     </span>
-                    <span class="rank-probability">${probabilityText}</span>
                 </li>
-                `;
-            }).join('');
+            `).join('');
         }
 
         function exportData() {

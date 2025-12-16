@@ -1,31 +1,23 @@
 /**
  * PartyKit Server for Real-time Ranking Collaboration
  *
- * Syncs state between multiple users working on the same ranking session:
- * - Options list
- * - Tier assignments
- * - Comparisons made
- * - Bradley-Terry prices
- * - Bounds (lowerBounds, upperBounds)
- * - Participant data
+ * State is keyed by participant name, so:
+ * - Survey mode: Each person enters their name, gets their own state
+ * - Live mode (?participant=X&live=true): Everyone with same participant name shares state
+ * - Multiple live sessions: Different participant names = different live rooms
  */
 
 export default class RankingServer {
   constructor(party) {
     this.party = party;
     // Track participant info per connection
-    this.connectionInfo = new Map(); // connectionId -> { participant, isAdmin }
+    this.connectionInfo = new Map(); // connectionId -> { participant, isAdmin, isLiveMode }
   }
 
   async onConnect(connection, ctx) {
     // Note: We'll send state after the client identifies themselves
     // with their participant name, so we can send the right state
-
-    // Notify others that someone joined
-    this.party.broadcast(JSON.stringify({
-      type: "user_joined",
-      connectionId: connection.id
-    }), [connection.id]);
+    // Don't broadcast user_joined here - wait until we know their participant name
   }
 
   async onMessage(message, connection) {
@@ -37,17 +29,27 @@ export default class RankingServer {
         // Store participant info for this connection
         this.connectionInfo.set(connection.id, {
           participant: data.participant,
-          isAdmin: data.isAdmin
+          isAdmin: data.isAdmin,
+          isLiveMode: data.isLiveMode
         });
-        console.log('[SERVER] Connection identified:', connection.id, data.participant, 'isAdmin:', data.isAdmin);
+        console.log('[SERVER] Connection identified:', connection.id, data.participant, 'isAdmin:', data.isAdmin, 'isLiveMode:', data.isLiveMode);
 
-        // Send participant-specific state
-        const participantStateKey = `state_${data.participant}`;
-        const participantState = await this.party.storage.get(participantStateKey);
-        if (participantState) {
+        // Notify others with same participant that someone joined (only in live mode)
+        if (data.isLiveMode) {
+          this.broadcastToParticipant(JSON.stringify({
+            type: "user_joined",
+            connectionId: connection.id,
+            participant: data.participant
+          }), connection);
+        }
+
+        // Send state - always use participant name as key (enables multiple live sessions)
+        const stateKey = `state_${data.participant}`;
+        const savedState = await this.party.storage.get(stateKey);
+        if (savedState) {
           connection.send(JSON.stringify({
             type: "sync",
-            state: participantState
+            state: savedState
           }));
         }
         break;
@@ -97,18 +99,22 @@ export default class RankingServer {
         // Handle tier assignment changes
         const senderInfo3 = this.connectionInfo.get(connection.id);
         if (senderInfo3 && senderInfo3.participant) {
+          // Always use participant name as key (enables multiple live sessions)
           const stateKey = `state_${senderInfo3.participant}`;
           const state = await this.party.storage.get(stateKey) || {};
           state.tiers = data.tiers;
           state.manualTiers = data.manualTiers;
+          state.customMultipliers = data.customMultipliers;
 
           await this.party.storage.put(stateKey, state);
         }
 
+        // Broadcast to connections with same participant name
         this.broadcastToParticipant(JSON.stringify({
           type: "tier_updated",
           tiers: data.tiers,
           manualTiers: data.manualTiers,
+          customMultipliers: data.customMultipliers,
           updatedBy: connection.id
         }), connection);
         break;
@@ -142,6 +148,7 @@ export default class RankingServer {
         // Client requesting full state sync
         const senderInfo4 = this.connectionInfo.get(connection.id);
         if (senderInfo4 && senderInfo4.participant) {
+          // Always use participant name as key
           const stateKey = `state_${senderInfo4.participant}`;
           const fullState = await this.party.storage.get(stateKey);
           if (fullState) {
@@ -156,14 +163,28 @@ export default class RankingServer {
   }
 
   onClose(connection) {
+    // Get connection info before deleting
+    const connInfo = this.connectionInfo.get(connection.id);
+
+    // Only notify same-participant connections in live mode
+    if (connInfo && connInfo.isLiveMode) {
+      // Notify others with same participant that someone left
+      for (const conn of this.party.getConnections()) {
+        if (conn.id === connection.id) continue;
+
+        const otherInfo = this.connectionInfo.get(conn.id);
+        if (otherInfo && otherInfo.participant === connInfo.participant) {
+          conn.send(JSON.stringify({
+            type: "user_left",
+            connectionId: connection.id,
+            participant: connInfo.participant
+          }));
+        }
+      }
+    }
+
     // Clean up connection info
     this.connectionInfo.delete(connection.id);
-
-    // Notify others that someone left
-    this.party.broadcast(JSON.stringify({
-      type: "user_left",
-      connectionId: connection.id
-    }));
   }
 
   // Helper method to broadcast to connections with the same participant
@@ -188,18 +209,12 @@ export default class RankingServer {
 
       const connInfo = this.connectionInfo.get(conn.id);
 
-      // Send to admins (they observe everything)
-      if (connInfo && connInfo.isAdmin) {
-        console.log('[SERVER] Sending to admin connection:', conn.id);
-        conn.send(message);
-        continue;
-      }
-
-      // Send to connections with same participant name
+      // Send only to connections with same participant name (including admins)
       if (connInfo && connInfo.participant === senderParticipant) {
         console.log('[SERVER] Sending to same-participant connection:', conn.id);
         conn.send(message);
       }
     }
   }
+
 }
