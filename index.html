@@ -2291,8 +2291,8 @@
 
             options = pollData.options;
 
-            // Connect to PartyKit for real-time collaboration
-            connectToPartyKit(id);
+            // Don't connect to PartyKit yet - wait until user enters their name
+            // This prevents state sync issues when viewing the share link
 
             // Show admin link if user is admin
             if (isAdmin) {
@@ -2396,6 +2396,11 @@
                 lowerBounds = progressData.lowerBounds || {};
                 upperBounds = progressData.upperBounds || {};
 
+                // Connect to PartyKit now that we have a participant name
+                if (pollId) {
+                    connectToPartyKit(pollId);
+                }
+
                 // Figure out where to resume from
                 if (comparisons.length > 0 && Object.keys(probabilities).length > 0) {
                     // Has comparisons and probabilities - go to chart
@@ -2422,6 +2427,11 @@
                     return;
                 }
                 currentParticipant = name;
+            }
+
+            // Now connect to PartyKit with the participant name
+            if (pollId) {
+                connectToPartyKit(pollId);
             }
 
             // Check if there's saved progress
