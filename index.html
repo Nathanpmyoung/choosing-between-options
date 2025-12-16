@@ -1535,9 +1535,10 @@
 
             partyConnection.onclose = () => {
                 console.log('PartyKit connection closed');
-                // Reconnect after 3 seconds
+                // Reconnect after 3 seconds if still on same poll and participant
                 setTimeout(() => {
-                    if (pollId === roomId) {
+                    const expectedRoom = `${pollId}_${currentParticipant}`;
+                    if (roomId === expectedRoom) {
                         connectToPartyKit(roomId);
                     }
                 }, 3000);
@@ -2149,8 +2150,8 @@
             newUrl.searchParams.set('poll', pollId);
             window.history.pushState({}, '', newUrl);
 
-            // Connect to PartyKit now that we have the poll ID in the URL
-            connectToPartyKit(pollId);
+            // Connect to PartyKit with room = pollId_participant (separate room per participant)
+            connectToPartyKit(`${pollId}_${currentParticipant}`);
 
             // Initialize for fresh start
             comparisons = [];
@@ -2315,8 +2316,8 @@
 
             options = pollData.options;
 
-            // Connect to PartyKit for real-time collaboration
-            connectToPartyKit(id);
+            // Connect to PartyKit with room = pollId_participant (separate room per participant)
+            connectToPartyKit(`${id}_${currentParticipant}`);
 
             // Show admin link if user is admin
             if (isAdmin) {
@@ -2396,9 +2397,9 @@
                 lowerBounds = progressData.lowerBounds || {};
                 upperBounds = progressData.upperBounds || {};
 
-                // Connect to PartyKit now that we have a participant name
+                // Connect to PartyKit with room = pollId_participant (separate room per participant)
                 if (pollId) {
-                    connectToPartyKit(pollId);
+                    connectToPartyKit(`${pollId}_${currentParticipant}`);
                 }
 
                 // Figure out where to resume from
@@ -2429,9 +2430,9 @@
                 currentParticipant = name;
             }
 
-            // Now connect to PartyKit with the participant name
+            // Connect to PartyKit with room = pollId_participant (separate room per participant)
             if (pollId) {
-                connectToPartyKit(pollId);
+                connectToPartyKit(`${pollId}_${currentParticipant}`);
             }
 
             // Check if there's saved progress
