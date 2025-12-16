@@ -1173,11 +1173,11 @@
             </div>
         </div>
 
-        <!-- Screen 5.75: Probability Assignment (REMOVED) -->
+        <!-- Screen 5.75: Probability Assignment -->
         <div id="probabilityScreen" class="screen">
             <h1>Assign Probabilities</h1>
-            <p class="subtitle">Counterfactual additional chance by Nathan working on it for 18 months</p>
-            <p class="help-text">Drag options vertically to set their probability (100% = certain, 0% = impossible). Horizontal position doesn't matter.</p>
+            <p class="subtitle">How likely is each outcome?</p>
+            <p class="help-text">Drag options vertically to set their probability (100% = certain, 0% = impossible).</p>
             <div class="probability-container">
                 <div class="probability-scale">
                     <div class="probability-marker" style="top: 0%">100%</div>
@@ -1191,8 +1191,8 @@
                 </div>
             </div>
             <div class="button-group">
-                <button class="secondary" onclick="backToComparison()">Back</button>
-                <button onclick="startProbabilityComparisons()">Continue</button>
+                <button class="secondary" onclick="backToTiersFromProbability()">Back to Tiers</button>
+                <button onclick="finishProbabilityAssignment()">Finish</button>
             </div>
         </div>
 
@@ -1356,6 +1356,7 @@
                     <span class="ranking-header-tier">Tier</span>
                     <span class="ranking-header-entry">Entry</span>
                     <span class="ranking-header-multiple">Multiple</span>
+                    <span class="ranking-header-probability">Prob</span>
                 </div>
                 <ol class="ranking-list" id="groupRanking"></ol>
             </div>
@@ -1817,6 +1818,7 @@
         let manualTiers = {}; // Tracks which option tiers have been manually set (to prevent auto-reassignment)
         let currentTier = null;
         let customMultipliers = {}; // Maps option index to custom multiplier value (overrides tier default)
+        let probabilities = {}; // Maps option index to probability (0.0 to 1.0)
 
         // Data migration system
         function migrateData() {
@@ -2645,6 +2647,7 @@
         function adjustMultiplier(idx, direction) {
             // Get current multiplier
             let currentMult = getMultiplierForOption(idx);
+            const currentTier = tiers[idx] || 'C';
 
             // Define multiplier steps (powers of 10 and half-steps)
             const steps = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
@@ -2667,10 +2670,44 @@
             const newMult = steps[newIdx];
             customMultipliers[idx] = newMult;
 
-            // Update display
-            const display = document.getElementById(`mult-display-${idx}`);
-            if (display) {
-                display.textContent = formatMultiplier(newMult);
+            // Check if we need to move to a different tier
+            // Tier thresholds: S>=1000, A>=100, B>=10, C>=1, D>=0.1, E>=0.01, F<0.01
+            const tierOrder = ['F', 'E', 'D', 'C', 'B', 'A', 'S'];
+            const tierThresholds = { 'S': 1000, 'A': 100, 'B': 10, 'C': 1, 'D': 0.1, 'E': 0.01, 'F': 0 };
+
+            let newTier = 'F';
+            for (const tier of ['S', 'A', 'B', 'C', 'D', 'E']) {
+                if (newMult >= tierThresholds[tier]) {
+                    newTier = tier;
+                    break;
+                }
+            }
+
+            // If tier changed, move the item in the UI
+            if (newTier !== currentTier) {
+                tiers[idx] = newTier;
+
+                // Move element to new tier container
+                const optionText = options[idx];
+                const oldElement = document.querySelector(`[data-option-idx="${idx}"]`);
+                if (oldElement) {
+                    oldElement.remove();
+                }
+
+                const newTierContainer = document.getElementById(`tier-items-${newTier}`);
+                newTierContainer.innerHTML += createTierItemHTML(idx, optionText);
+
+                // Re-setup drag events for the new element
+                const newElement = document.querySelector(`[data-option-idx="${idx}"]`);
+                if (newElement) {
+                    setupDragEventsForItem(newElement);
+                }
+            } else {
+                // Just update the display
+                const display = document.getElementById(`mult-display-${idx}`);
+                if (display) {
+                    display.textContent = formatMultiplier(newMult);
+                }
             }
 
             // Save progress
@@ -2684,25 +2721,8 @@
             // Save final state
             saveProgress();
 
-            // Create ranking from tiers and multipliers
-            const ranking = options.map((option, idx) => ({
-                option,
-                multiplier: getMultiplierForOption(idx),
-                tier: tiers[idx] || 'C'
-            })).sort((a, b) => b.multiplier - a.multiplier);
-
-            // Show appropriate screen based on user type
-            if (isOrganizer) {
-                // Organizer sees share link screen
-                updateShareLinks();
-                showScreen('shareLinkScreen');
-            } else if (isLiveMode) {
-                // Live mode - just show thank you with option to go to results
-                showThankYou(ranking);
-            } else {
-                // Regular participant - show thank you
-                showThankYou(ranking);
-            }
+            // Go to probability assignment screen
+            goToProbabilityScreen();
         }
 
         function populateTiersFromState() {
@@ -2875,6 +2895,35 @@
 
             setupProbabilityDragAndDrop();
             showScreen('probabilityScreen');
+        }
+
+        function backToTiersFromProbability() {
+            // Go back to tier selection, keeping current state
+            populateTiersFromState();
+            showScreen('tierScreen');
+        }
+
+        function finishProbabilityAssignment() {
+            // Save final state
+            saveProgress();
+
+            // Create ranking from tiers, multipliers, and probabilities
+            const ranking = options.map((option, idx) => ({
+                option,
+                multiplier: getMultiplierForOption(idx),
+                tier: tiers[idx] || 'C',
+                probability: probabilities[idx] || 0.5
+            })).sort((a, b) => b.multiplier - a.multiplier);
+
+            // Show appropriate screen based on user type
+            if (isOrganizer) {
+                // Organizer sees share link screen
+                updateShareLinks();
+                showScreen('shareLinkScreen');
+            } else {
+                // Regular participant or live mode - show thank you
+                showThankYou(ranking);
+            }
         }
 
         function setupProbabilityDragAndDrop() {
@@ -4328,6 +4377,7 @@
                 tiers: tiers,
                 manualTiers: manualTiers,
                 customMultipliers: customMultipliers,
+                probabilities: probabilities,
                 timestamp: new Date().toISOString()
             };
             localStorage.setItem(progressKey, JSON.stringify(progressData));
@@ -4350,11 +4400,12 @@
                 return; // Nothing to save yet
             }
 
-            // Create ranking based on tier and custom multipliers
+            // Create ranking based on tier, custom multipliers, and probabilities
             const ranking = options.map((option, idx) => ({
                 option,
                 multiplier: getMultiplierForOption(idx),
-                tier: tiers[idx] || 'C'
+                tier: tiers[idx] || 'C',
+                probability: probabilities[idx] !== undefined ? probabilities[idx] : 0.5
             })).sort((a, b) => b.multiplier - a.multiplier);
 
             // Save this participant's data to the poll
@@ -4367,6 +4418,7 @@
                 ranking: ranking,
                 tiers: tiers,
                 customMultipliers: customMultipliers,
+                probabilities: probabilities,
                 enabled: true
             };
 
@@ -4386,6 +4438,7 @@
                 tiers = progressData.tiers || {};
                 manualTiers = progressData.manualTiers || {};
                 customMultipliers = progressData.customMultipliers || {};
+                probabilities = progressData.probabilities || {};
                 return true;
             }
             return false;
@@ -4797,7 +4850,8 @@
                     multiplier: p.customMultipliers && p.customMultipliers[idx] !== undefined
                         ? p.customMultipliers[idx]
                         : tierBaseMultipliers[p.tiers && p.tiers[idx] || 'C'],
-                    tier: p.tiers && p.tiers[idx] || 'C'
+                    tier: p.tiers && p.tiers[idx] || 'C',
+                    probability: p.probabilities && p.probabilities[idx] !== undefined ? p.probabilities[idx] : 0.5
                 })).sort((a, b) => b.multiplier - a.multiplier);
 
                 return `
@@ -4808,6 +4862,7 @@
                             <span class="ranking-header-tier">Tier</span>
                             <span class="ranking-header-entry">Entry</span>
                             <span class="ranking-header-multiple">Multiple</span>
+                            <span class="ranking-header-probability">Prob</span>
                         </div>
                         <ol class="ranking-list">
                             ${ranking.map((item, idx) => `
@@ -4818,6 +4873,7 @@
                                     <span class="rank-score">
                                         <span class="rank-multiplier">${formatMultiplier(item.multiplier)}</span>
                                     </span>
+                                    <span class="rank-probability">${Math.round((item.probability || 0.5) * 100)}%</span>
                                 </li>
                             `).join('')}
                         </ol>
@@ -5052,10 +5108,10 @@
                 return;
             }
 
-            // Average multipliers and tiers across participants
+            // Average multipliers, tiers, and probabilities across participants
             const aggregateData = {};
             options.forEach(option => {
-                aggregateData[option] = { multipliers: [], tiers: [] };
+                aggregateData[option] = { multipliers: [], tiers: [], probabilities: [] };
             });
 
             enabledParticipants.forEach(p => {
@@ -5065,6 +5121,9 @@
                             aggregateData[item.option].multipliers.push(item.multiplier || tierBaseMultipliers[item.tier || 'C']);
                             if (item.tier) {
                                 aggregateData[item.option].tiers.push(item.tier);
+                            }
+                            if (item.probability !== undefined && item.probability !== null) {
+                                aggregateData[item.option].probabilities.push(item.probability);
                             }
                         }
                     });
@@ -5083,10 +5142,16 @@
                     data.tiers.forEach(t => tierCounts[t] = (tierCounts[t] || 0) + 1);
                     const mostCommonTier = Object.keys(tierCounts).sort((a, b) => tierCounts[b] - tierCounts[a])[0] || 'C';
 
+                    // Calculate average probability (arithmetic mean)
+                    const avgProbability = data.probabilities.length > 0
+                        ? data.probabilities.reduce((sum, p) => sum + p, 0) / data.probabilities.length
+                        : null;
+
                     return {
                         option,
                         multiplier: avgMultiplier,
-                        tier: mostCommonTier
+                        tier: mostCommonTier,
+                        probability: avgProbability
                     };
                 })
                 .sort((a, b) => b.multiplier - a.multiplier);
@@ -5099,6 +5164,7 @@
                     <span class="rank-name">${item.option}</span>
                     <span class="rank-score">
                         <span class="rank-multiplier">${formatMultiplier(item.multiplier)}</span>
+                        ${item.probability !== null ? `<span class="rank-probability">${Math.round(item.probability)}%</span>` : ''}
                     </span>
                 </li>
             `).join('');
