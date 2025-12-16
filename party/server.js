@@ -1,9 +1,10 @@
 /**
  * PartyKit Server for Real-time Ranking Collaboration
  *
- * Two modes:
- * 1. Survey mode: Each participant has their own state
- * 2. Live mode (?live=true): Everyone shares the same state
+ * State is keyed by participant name, so:
+ * - Survey mode: Each person enters their name, gets their own state
+ * - Live mode (?participant=X&live=true): Everyone with same participant name shares state
+ * - Multiple live sessions: Different participant names = different live rooms
  */
 
 export default class RankingServer {
@@ -38,8 +39,8 @@ export default class RankingServer {
         });
         console.log('[SERVER] Connection identified:', connection.id, data.participant, 'isAdmin:', data.isAdmin, 'isLiveMode:', data.isLiveMode);
 
-        // Send state - use shared key for live mode, participant-specific otherwise
-        const stateKey = data.isLiveMode ? 'state___live__' : `state_${data.participant}`;
+        // Send state - always use participant name as key (enables multiple live sessions)
+        const stateKey = `state_${data.participant}`;
         const savedState = await this.party.storage.get(stateKey);
         if (savedState) {
           connection.send(JSON.stringify({
@@ -94,8 +95,8 @@ export default class RankingServer {
         // Handle tier assignment changes
         const senderInfo3 = this.connectionInfo.get(connection.id);
         if (senderInfo3 && senderInfo3.participant) {
-          // Use shared key for live mode
-          const stateKey = senderInfo3.isLiveMode ? 'state___live__' : `state_${senderInfo3.participant}`;
+          // Always use participant name as key (enables multiple live sessions)
+          const stateKey = `state_${senderInfo3.participant}`;
           const state = await this.party.storage.get(stateKey) || {};
           state.tiers = data.tiers;
           state.manualTiers = data.manualTiers;
@@ -104,24 +105,14 @@ export default class RankingServer {
           await this.party.storage.put(stateKey, state);
         }
 
-        // In live mode, broadcast to ALL live connections; otherwise just same participant
-        if (senderInfo3 && senderInfo3.isLiveMode) {
-          this.broadcastToLive(JSON.stringify({
-            type: "tier_updated",
-            tiers: data.tiers,
-            manualTiers: data.manualTiers,
-            customMultipliers: data.customMultipliers,
-            updatedBy: connection.id
-          }), connection);
-        } else {
-          this.broadcastToParticipant(JSON.stringify({
-            type: "tier_updated",
-            tiers: data.tiers,
-            manualTiers: data.manualTiers,
-            customMultipliers: data.customMultipliers,
-            updatedBy: connection.id
-          }), connection);
-        }
+        // Broadcast to connections with same participant name
+        this.broadcastToParticipant(JSON.stringify({
+          type: "tier_updated",
+          tiers: data.tiers,
+          manualTiers: data.manualTiers,
+          customMultipliers: data.customMultipliers,
+          updatedBy: connection.id
+        }), connection);
         break;
 
       case "screen_changed":
@@ -153,8 +144,8 @@ export default class RankingServer {
         // Client requesting full state sync
         const senderInfo4 = this.connectionInfo.get(connection.id);
         if (senderInfo4 && senderInfo4.participant) {
-          // Use shared key for live mode
-          const stateKey = senderInfo4.isLiveMode ? 'state___live__' : `state_${senderInfo4.participant}`;
+          // Always use participant name as key
+          const stateKey = `state_${senderInfo4.participant}`;
           const fullState = await this.party.storage.get(stateKey);
           if (fullState) {
             connection.send(JSON.stringify({
@@ -215,23 +206,4 @@ export default class RankingServer {
     }
   }
 
-  // Helper method to broadcast to ALL live mode connections
-  broadcastToLive(message, senderConnection, excludeSender = true) {
-    console.log('[SERVER] Broadcasting to all live connections');
-
-    for (const conn of this.party.getConnections()) {
-      // Skip sender if excludeSender is true
-      if (excludeSender && conn.id === senderConnection.id) {
-        continue;
-      }
-
-      const connInfo = this.connectionInfo.get(conn.id);
-
-      // Send to all live mode connections
-      if (connInfo && connInfo.isLiveMode) {
-        console.log('[SERVER] Sending to live connection:', conn.id);
-        conn.send(message);
-      }
-    }
-  }
 }

@@ -1958,8 +1958,11 @@
             // Check for live/collaborative mode
             if (liveParam === 'true') {
                 isLiveMode = true;
-                currentParticipant = '__live__'; // Shared participant name for live mode
-                console.log('[DEBUG] Live mode enabled');
+                // Use participant param as session name, or default to '__live__'
+                currentParticipant = (participantParam && participantParam.trim())
+                    ? participantParam.trim()
+                    : '__live__';
+                console.log('[DEBUG] Live mode enabled, session:', currentParticipant);
             }
 
             if (pollId) {
@@ -1972,7 +1975,7 @@
                     console.log('[DEBUG] Live mode, loading poll and starting session');
                     loadPollAndStartSession(pollId);
                 }
-                // If participant name in URL, auto-start session
+                // If participant name in URL (non-live), auto-start session
                 else if (participantParam && participantParam.trim()) {
                     console.log('[DEBUG] Participant found in URL, calling loadPollAndStartSession');
                     currentParticipant = participantParam.trim();
