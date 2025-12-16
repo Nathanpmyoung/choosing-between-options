@@ -101,6 +101,7 @@ export default class RankingServer {
           const state = await this.party.storage.get(stateKey) || {};
           state.tiers = data.tiers;
           state.manualTiers = data.manualTiers;
+          state.customMultipliers = data.customMultipliers;
 
           await this.party.storage.put(stateKey, state);
         }
@@ -109,6 +110,7 @@ export default class RankingServer {
           type: "tier_updated",
           tiers: data.tiers,
           manualTiers: data.manualTiers,
+          customMultipliers: data.customMultipliers,
           updatedBy: connection.id
         }), connection);
         break;

@@ -554,6 +554,53 @@
             transform: rotate(3deg);
         }
 
+        .draggable-item .item-content {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .draggable-item .item-label {
+            flex: 1;
+        }
+
+        .draggable-item .multiplier-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            margin-left: 8px;
+        }
+
+        .draggable-item .multiplier-btn {
+            width: 20px;
+            height: 16px;
+            padding: 0;
+            border: 1px solid #ccc;
+            background: #f0f0f0;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 10px;
+            line-height: 14px;
+            color: #666;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .draggable-item .multiplier-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .draggable-item .multiplier-display {
+            font-size: 0.75rem;
+            color: #888;
+            margin-left: 4px;
+            min-width: 40px;
+            text-align: right;
+        }
+
         .confidence-indicator {
             display: inline-block;
             width: 20px;
@@ -1109,14 +1156,14 @@
             </div>
             <div class="button-group">
                 <button class="secondary" onclick="goBackToName()">Back</button>
-                <button id="continueToComparisonsBtn" onclick="continueToComparisons()">Continue</button>
+                <button id="continueToComparisonsBtn" onclick="finishTierAssignment()">Finish</button>
             </div>
             <div id="adminViewResultsFromTier" style="display: none; margin-top: 20px; text-align: center;">
                 <span class="start-over" onclick="viewResults()">View Results (Admin)</span>
             </div>
         </div>
 
-        <!-- Screen 5.75: Probability Assignment -->
+        <!-- Screen 5.75: Probability Assignment (REMOVED) -->
         <div id="probabilityScreen" class="screen">
             <h1>Assign Probabilities</h1>
             <p class="subtitle">Counterfactual additional chance by Nathan working on it for 18 months</p>
@@ -1299,7 +1346,6 @@
                     <span class="ranking-header-tier">Tier</span>
                     <span class="ranking-header-entry">Entry</span>
                     <span class="ranking-header-multiple">Multiple</span>
-                    <span class="ranking-header-probability">Avg Prob</span>
                 </div>
                 <ol class="ranking-list" id="groupRanking"></ol>
             </div>
@@ -1326,7 +1372,6 @@
             </div>
 
             <div class="button-group">
-                <button onclick="viewAllCharts()">View Charts</button>
                 <button class="secondary" onclick="exportData()">Export Data</button>
                 <button id="generateParticipantLinkBtn" style="display: none;" onclick="generateParticipantLink()">Generate Participant Link</button>
                 <button id="editOptionsBtn" style="display: none;" class="edit-options-btn" onclick="editOptions()">Edit Options</button>
@@ -1480,12 +1525,13 @@
                         if (data.tiers) {
                             tiers = data.tiers;
                             manualTiers = data.manualTiers || manualTiers;
+                            customMultipliers = data.customMultipliers || customMultipliers;
 
                             // Refresh tier screen if active
                             const currentScreen = document.querySelector('.screen.active');
                             if (currentScreen) {
                                 if (currentScreen.id === 'tierScreen') {
-                                    populateTiersWithConfidence();
+                                    populateTiersFromState();
                                 } else if (currentScreen.id === 'resultsScreen') {
                                     viewResults(); // Refresh results screen
                                 }
@@ -1624,7 +1670,8 @@
             partyConnection.send(JSON.stringify({
                 type: 'tier_changed',
                 tiers,
-                manualTiers
+                manualTiers,
+                customMultipliers
             }));
         }
 
@@ -1757,19 +1804,7 @@
         let tiers = {}; // Maps option index to tier (S, A, B, C, D, E, F)
         let manualTiers = {}; // Tracks which option tiers have been manually set (to prevent auto-reassignment)
         let currentTier = null;
-        let probabilities = {}; // Maps option index to probability (0.0 to 1.0)
-
-        // Chart viewing state
-        let chartParticipants = []; // Array of all participants for chart viewing
-        let currentChartIndex = 0; // Current participant being viewed in chart
-
-        // Probability comparison state
-        let probabilityComparisons = []; // Array of {winner, loser} for probability comparisons
-        let drawnProbabilityPairs = []; // Pairs marked as equal probability
-
-        // Bounds tracking for multiplier comparisons
-        let lowerBounds = {}; // Maps option index to log(lower bound)
-        let upperBounds = {}; // Maps option index to log(upper bound)
+        let customMultipliers = {}; // Maps option index to custom multiplier value (overrides tier default)
 
         // Data migration system
         function migrateData() {
@@ -2297,15 +2332,15 @@
             const hasSavedProgress = loadProgress();
 
             if (hasSavedProgress) {
-                // Ask if user wants to resume
-                if (confirm('You have saved progress. Would you like to resume where you left off?')) {
-                    // Resume from saved progress - go directly to comparisons
-                    startComparisons(false);
-                    return;
-                } else {
-                    // Start fresh - clear saved progress
-                    clearProgress();
+                // Resume from saved progress - show tier screen with saved state
+                populateTiersFromState();
+                showScreen('tierScreen');
+
+                // Show admin link if user is admin
+                if (isAdmin) {
+                    document.getElementById('adminViewResultsFromTier').style.display = 'block';
                 }
+                return;
             }
 
             // Initialize for fresh start
@@ -2315,21 +2350,15 @@
             // Initialize tiers - default all to C tier
             tiers = {};
             manualTiers = {};
+            customMultipliers = {};
             options.forEach((_, idx) => {
                 tiers[idx] = 'C';
             });
 
-            // Initialize bounds for each item (in log-space)
-            initializeBounds();
-
-            // Populate C tier with all items initially (no prices shown initially)
+            // Populate C tier with all items initially with multiplier controls
             const cTierContainer = document.getElementById('tier-items-C');
             cTierContainer.innerHTML = options.map((option, idx) => {
-                return `
-                    <div class="draggable-item" draggable="true" data-option-idx="${idx}">
-                        ${option}
-                    </div>
-                `;
+                return createTierItemHTML(idx, option);
             }).join('');
 
             // Clear other tiers
@@ -2348,20 +2377,24 @@
             showScreen('tierScreen');
         }
 
-        function setupDragAndDrop() {
-            let draggedElement = null;
+        let draggedElement = null; // Move to outer scope for access in helper
 
+        function setupDragEventsForItem(item) {
+            item.addEventListener('dragstart', (e) => {
+                draggedElement = item;
+                item.classList.add('dragging');
+            });
+
+            item.addEventListener('dragend', (e) => {
+                item.classList.remove('dragging');
+                draggedElement = null;
+            });
+        }
+
+        function setupDragAndDrop() {
             // Add drag event listeners to all draggable items
             document.querySelectorAll('.draggable-item').forEach(item => {
-                item.addEventListener('dragstart', (e) => {
-                    draggedElement = item;
-                    item.classList.add('dragging');
-                });
-
-                item.addEventListener('dragend', (e) => {
-                    item.classList.remove('dragging');
-                    draggedElement = null;
-                });
+                setupDragEventsForItem(item);
             });
 
             // Add drop zone event listeners to all tier rows
@@ -2381,29 +2414,31 @@
 
                     if (draggedElement) {
                         const tier = row.dataset.tier;
-                        const optionIdx = draggedElement.dataset.optionIdx;
+                        const optionIdx = parseInt(draggedElement.dataset.optionIdx);
                         const tierItems = row.querySelector('.tier-items');
 
                         // Update tiers mapping
                         tiers[optionIdx] = tier;
 
-                        // Mark this tier as manually set ONLY if comparisons have started
-                        // Initial tier assignment should allow auto-reassignment based on Bradley-Terry
-                        if (comparisons && comparisons.length > 0) {
-                            manualTiers[optionIdx] = tier;
-                        }
+                        // When moving to a new tier, reset custom multiplier to tier default
+                        delete customMultipliers[optionIdx];
 
                         // Sync tier change to PartyKit for real-time collaboration
                         syncTierChangeToPartyKit();
 
-                        // Extract option text
+                        // Update the element with new multiplier display
                         const optionText = options[optionIdx];
+                        draggedElement.outerHTML = createTierItemHTML(optionIdx, optionText);
 
-                        // Update the element's display (no price on initial tier assignment)
-                        draggedElement.innerHTML = `${optionText}`;
+                        // Re-get the element after replacing HTML
+                        const newElement = document.querySelector(`[data-option-idx="${optionIdx}"]`);
+                        tierItems.appendChild(newElement);
 
-                        // Move the element to new tier
-                        tierItems.appendChild(draggedElement);
+                        // Re-setup drag events for the new element
+                        setupDragEventsForItem(newElement);
+
+                        // Save progress
+                        saveProgress();
                     }
                 });
             });
@@ -2411,6 +2446,115 @@
 
         function goBackToName() {
             showScreen('nameScreen');
+        }
+
+        // Tier multiplier base values
+        const tierBaseMultipliers = {
+            'S': 1000, 'A': 100, 'B': 10, 'C': 1,
+            'D': 0.1, 'E': 0.01, 'F': 0.001
+        };
+
+        function getMultiplierForOption(idx) {
+            // Return custom multiplier if set, otherwise tier base
+            if (customMultipliers[idx] !== undefined) {
+                return customMultipliers[idx];
+            }
+            return tierBaseMultipliers[tiers[idx] || 'C'];
+        }
+
+        function formatMultiplier(mult) {
+            if (mult >= 1) {
+                return mult % 1 === 0 ? `${mult}x` : `${mult.toFixed(1)}x`;
+            } else {
+                const inverse = Math.round(1 / mult);
+                return `1/${inverse}`;
+            }
+        }
+
+        function createTierItemHTML(idx, optionText) {
+            const multiplier = getMultiplierForOption(idx);
+            return `
+                <div class="draggable-item" draggable="true" data-option-idx="${idx}">
+                    <div class="item-content">
+                        <span class="item-label">${optionText}</span>
+                        <span class="multiplier-display" id="mult-display-${idx}">${formatMultiplier(multiplier)}</span>
+                        <div class="multiplier-controls">
+                            <button class="multiplier-btn" onclick="event.stopPropagation(); adjustMultiplier(${idx}, 'up')" title="Increase multiplier">▲</button>
+                            <button class="multiplier-btn" onclick="event.stopPropagation(); adjustMultiplier(${idx}, 'down')" title="Decrease multiplier">▼</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function adjustMultiplier(idx, direction) {
+            // Get current multiplier
+            let currentMult = getMultiplierForOption(idx);
+
+            // Define multiplier steps (powers of 10 and half-steps)
+            const steps = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
+
+            // Find closest step
+            let closestIdx = 0;
+            let closestDiff = Math.abs(Math.log10(steps[0]) - Math.log10(currentMult));
+            for (let i = 1; i < steps.length; i++) {
+                const diff = Math.abs(Math.log10(steps[i]) - Math.log10(currentMult));
+                if (diff < closestDiff) {
+                    closestDiff = diff;
+                    closestIdx = i;
+                }
+            }
+
+            // Move to next/prev step
+            let newIdx = direction === 'up' ? closestIdx + 1 : closestIdx - 1;
+            newIdx = Math.max(0, Math.min(steps.length - 1, newIdx));
+
+            const newMult = steps[newIdx];
+            customMultipliers[idx] = newMult;
+
+            // Update display
+            const display = document.getElementById(`mult-display-${idx}`);
+            if (display) {
+                display.textContent = formatMultiplier(newMult);
+            }
+
+            // Save progress
+            saveProgress();
+
+            // Sync to PartyKit
+            syncTierChangeToPartyKit();
+        }
+
+        function finishTierAssignment() {
+            // Save final state
+            saveProgress();
+
+            // Create ranking from tiers and multipliers
+            const ranking = options.map((option, idx) => ({
+                option,
+                multiplier: getMultiplierForOption(idx),
+                tier: tiers[idx] || 'C'
+            })).sort((a, b) => b.multiplier - a.multiplier);
+
+            // Show thank you / results
+            showThankYou(ranking);
+        }
+
+        function populateTiersFromState() {
+            // Clear all tier containers
+            ['S', 'A', 'B', 'C', 'D', 'E', 'F'].forEach(tier => {
+                document.getElementById(`tier-items-${tier}`).innerHTML = '';
+            });
+
+            // Populate tiers based on saved state
+            options.forEach((option, idx) => {
+                const tier = tiers[idx] || 'C';
+                const tierContainer = document.getElementById(`tier-items-${tier}`);
+                tierContainer.innerHTML += createTierItemHTML(idx, option);
+            });
+
+            // Setup drag and drop for all items
+            setupDragAndDrop();
         }
 
         function showTierVerification() {
@@ -4019,13 +4163,7 @@
                 participant: currentParticipant,
                 tiers: tiers,
                 manualTiers: manualTiers,
-                probabilities: probabilities,
-                comparisons: comparisons,
-                drawnPairs: drawnPairs,
-                probabilityComparisons: probabilityComparisons,
-                drawnProbabilityPairs: drawnProbabilityPairs,
-                lowerBounds: lowerBounds,
-                upperBounds: upperBounds,
+                customMultipliers: customMultipliers,
                 timestamp: new Date().toISOString()
             };
             localStorage.setItem(progressKey, JSON.stringify(progressData));
@@ -4038,55 +4176,33 @@
 
         async function saveParticipantData() {
             // Save current progress as participant data to the poll
-            // This ensures partial responses are captured even if user doesn't complete all comparisons
             if (!currentParticipant || !pollId) {
                 return; // No participant or poll ID set
             }
 
-            // Skip if we have neither tiers nor comparisons (nothing to save)
+            // Skip if we have no tiers (nothing to save)
             const hasTiers = tiers && Object.keys(tiers).length > 0;
-            const hasComparisons = comparisons && comparisons.length > 0;
-            if (!hasTiers && !hasComparisons) {
+            if (!hasTiers) {
                 return; // Nothing to save yet
             }
 
-            const tierBasePrices = {
-                S: 1000000, A: 100000, B: 10000, C: 1000, D: 100, E: 10, F: 1
-            };
-
-            // Calculate current ranking based on progress
-            let prices = new Array(options.length).fill(0);
-            options.forEach((_, idx) => {
-                const tier = tiers[idx] || 'C';
-                prices[idx] = tierBasePrices[tier];
-            });
-
-            const result = computeBradleyTerryPrices(prices, comparisons, tiers, manualTiers);
-            prices = result.prices;
-            const finalTiers = result.tiers;
-
+            // Create ranking based on tier and custom multipliers
             const ranking = options.map((option, idx) => ({
                 option,
-                rating: Math.round(prices[idx]),
-                tier: finalTiers[idx] || 'C'
-            })).sort((a, b) => b.rating - a.rating);
+                multiplier: getMultiplierForOption(idx),
+                tier: tiers[idx] || 'C'
+            })).sort((a, b) => b.multiplier - a.multiplier);
 
             // Save this participant's data to the poll
             const pollData = await loadPollData(pollId);
             if (!pollData) return; // Poll not found
 
-            // Convert probabilities object to array format
-            const probabilitiesArray = options.map((_, idx) => probabilities[idx] !== undefined ? probabilities[idx] : null);
-
             const participantData = {
                 name: currentParticipant,
                 timestamp: new Date().toISOString(),
-                comparisons: comparisons,
                 ranking: ranking,
-                tiers: finalTiers,
-                probabilities: probabilitiesArray,
-                lowerBounds: lowerBounds,
-                upperBounds: upperBounds,
+                tiers: tiers,
+                customMultipliers: customMultipliers,
                 enabled: true
             };
 
@@ -4103,15 +4219,9 @@
 
             if (savedProgress) {
                 const progressData = JSON.parse(savedProgress);
-                tiers = progressData.tiers;
+                tiers = progressData.tiers || {};
                 manualTiers = progressData.manualTiers || {};
-                probabilities = progressData.probabilities || {};
-                comparisons = progressData.comparisons || [];
-                drawnPairs = progressData.drawnPairs || [];
-                probabilityComparisons = progressData.probabilityComparisons || [];
-                drawnProbabilityPairs = progressData.drawnProbabilityPairs || [];
-                lowerBounds = progressData.lowerBounds || {};
-                upperBounds = progressData.upperBounds || {};
+                customMultipliers = progressData.customMultipliers || {};
                 return true;
             }
             return false;
@@ -4460,15 +4570,14 @@
 
         function showThankYou(ranking) {
             document.getElementById('thankYouName').textContent = `Thanks, ${currentParticipant}!`;
-            const rankingWithMultipliers = calculateRelativeMultipliers(ranking);
             const thankYouList = document.getElementById('thankYouRanking');
-            thankYouList.innerHTML = rankingWithMultipliers.map((item, idx) => `
+            thankYouList.innerHTML = ranking.map((item, idx) => `
                 <li class="ranking-item">
                     <span class="rank-number">${idx + 1}</span>
-                    <span class="tier-label">${item.tierLabel || getTierLabel(item.tier)}</span>
+                    <span class="tier-label">${getTierLabel(item.tier)}</span>
                     <span class="rank-name">${item.option}</span>
                     <span class="rank-score">
-                        <span class="rank-multiplier">${item.multiplierText || ''}</span>
+                        <span class="rank-multiplier">${formatMultiplier(item.multiplier)}</span>
                     </span>
                 </li>
             `).join('');
@@ -4476,51 +4585,11 @@
         }
 
         async function viewResults() {
-            console.log('[RESULTS] viewResults() called, pollId:', pollId, 'currentParticipant:', currentParticipant, 'comparisons:', comparisons?.length);
+            console.log('[RESULTS] viewResults() called, pollId:', pollId);
 
-            // If we have in-progress comparisons, save them as participant data first
-            if (currentParticipant && comparisons && comparisons.length > 0) {
-                // Calculate current ranking based on progress
-                const tierBasePrices = {
-                    S: 1000000, A: 100000, B: 10000, C: 1000, D: 100, E: 10, F: 1
-                };
-
-                let prices = new Array(options.length).fill(0);
-                options.forEach((_, idx) => {
-                    const tier = tiers[idx] || 'C';
-                    prices[idx] = tierBasePrices[tier];
-                });
-
-                const result = computeBradleyTerryPrices(prices, comparisons, tiers, manualTiers);
-                prices = result.prices;
-                const finalTiers = result.tiers;
-
-                const ranking = options.map((option, idx) => ({
-                    option,
-                    rating: Math.round(prices[idx]),
-                    tier: finalTiers[idx] || 'C'
-                })).sort((a, b) => b.rating - a.rating);
-
-                // Save this participant's data
-                const pollData = await loadPollData(pollId);
-
-                // Convert probabilities object to array format
-                const probabilitiesArray = options.map((_, idx) => probabilities[idx] || null);
-
-                const participantData = {
-                    name: currentParticipant,
-                    timestamp: new Date().toISOString(),
-                    comparisons: comparisons,
-                    ranking: ranking,
-                    tiers: finalTiers,
-                    probabilities: probabilitiesArray,
-                    enabled: true
-                };
-
-                // Remove existing submission from this participant and add new one
-                pollData.participants = pollData.participants.filter(p => p.name !== currentParticipant);
-                pollData.participants.push(participantData);
-                await savePollData(pollId, pollData);
+            // Save current participant's data if they have tiers
+            if (currentParticipant && tiers && Object.keys(tiers).length > 0) {
+                await saveParticipantData();
             }
 
             const pollData = await loadPollData(pollId);
@@ -4546,7 +4615,15 @@
             // Show individual rankings
             const individualDiv = document.getElementById('individualRankings');
             individualDiv.innerHTML = pollData.participants.map(p => {
-                const rankingWithMultipliers = calculateRelativeMultipliers(p.ranking);
+                // Get ranking - use stored ranking if available, or create from tiers/multipliers
+                const ranking = p.ranking || options.map((option, idx) => ({
+                    option,
+                    multiplier: p.customMultipliers && p.customMultipliers[idx] !== undefined
+                        ? p.customMultipliers[idx]
+                        : tierBaseMultipliers[p.tiers && p.tiers[idx] || 'C'],
+                    tier: p.tiers && p.tiers[idx] || 'C'
+                })).sort((a, b) => b.multiplier - a.multiplier);
+
                 return `
                     <div class="section">
                         <h3>${p.name}'s Rankings ${isAdmin ? `<button class="secondary" style="font-size: 0.9rem; padding: 5px 15px; margin-left: 15px;" onclick="editParticipant('${p.name}')">Edit</button>` : ''}</h3>
@@ -4555,24 +4632,18 @@
                             <span class="ranking-header-tier">Tier</span>
                             <span class="ranking-header-entry">Entry</span>
                             <span class="ranking-header-multiple">Multiple</span>
-                            <span class="ranking-header-probability">Probability</span>
                         </div>
                         <ol class="ranking-list">
-                            ${rankingWithMultipliers.map((item, idx) => {
-                                const probability = p.probabilities && p.probabilities[options.indexOf(item.option)];
-                                const probabilityText = probability !== undefined ? Math.round(probability * 100) + '%' : '-';
-                                return `
+                            ${ranking.map((item, idx) => `
                                 <li class="ranking-item">
                                     <span class="rank-number">${idx + 1}</span>
-                                    <span class="tier-label">${item.tierLabel || getTierLabel(item.tier)}</span>
+                                    <span class="tier-label">${getTierLabel(item.tier)}</span>
                                     <span class="rank-name">${item.option}</span>
                                     <span class="rank-score">
-                                        <span class="rank-multiplier">${item.multiplierText || ''}</span>
+                                        <span class="rank-multiplier">${formatMultiplier(item.multiplier)}</span>
                                     </span>
-                                    <span class="rank-probability">${probabilityText}</span>
                                 </li>
-                                `;
-                            }).join('')}
+                            `).join('')}
                         </ol>
                     </div>
                 `;
@@ -4806,23 +4877,20 @@
                 return;
             }
 
-            // Average rankings, tiers, and probabilities across participants
+            // Average multipliers and tiers across participants
             const aggregateData = {};
             options.forEach(option => {
-                aggregateData[option] = { totalRating: 0, tiers: [], probabilities: [] };
+                aggregateData[option] = { multipliers: [], tiers: [] };
             });
 
             enabledParticipants.forEach(p => {
-                p.ranking.forEach(item => {
-                    aggregateData[item.option].totalRating += item.rating;
-                    if (item.tier) {
-                        aggregateData[item.option].tiers.push(item.tier);
-                    }
-                });
-                if (p.probabilities) {
-                    options.forEach((option, idx) => {
-                        if (p.probabilities[idx] !== undefined) {
-                            aggregateData[option].probabilities.push(p.probabilities[idx]);
+                if (p.ranking) {
+                    p.ranking.forEach(item => {
+                        if (aggregateData[item.option]) {
+                            aggregateData[item.option].multipliers.push(item.multiplier || tierBaseMultipliers[item.tier || 'C']);
+                            if (item.tier) {
+                                aggregateData[item.option].tiers.push(item.tier);
+                            }
                         }
                     });
                 }
@@ -4830,44 +4898,35 @@
 
             const groupRanking = Object.entries(aggregateData)
                 .map(([option, data]) => {
+                    // Calculate geometric mean of multipliers (more appropriate for ratios)
+                    const avgMultiplier = data.multipliers.length > 0
+                        ? Math.exp(data.multipliers.reduce((sum, m) => sum + Math.log(m), 0) / data.multipliers.length)
+                        : 1;
+
                     // Find most common tier
                     const tierCounts = {};
                     data.tiers.forEach(t => tierCounts[t] = (tierCounts[t] || 0) + 1);
                     const mostCommonTier = Object.keys(tierCounts).sort((a, b) => tierCounts[b] - tierCounts[a])[0] || 'C';
 
-                    // Calculate average probability
-                    const avgProbability = data.probabilities.length > 0
-                        ? data.probabilities.reduce((sum, p) => sum + p, 0) / data.probabilities.length
-                        : null;
-
                     return {
                         option,
-                        rating: Math.round(data.totalRating / enabledParticipants.length),
-                        tier: mostCommonTier,
-                        avgProbability: avgProbability
+                        multiplier: avgMultiplier,
+                        tier: mostCommonTier
                     };
                 })
-                .sort((a, b) => b.rating - a.rating);
-
-            const groupRankingWithMultipliers = calculateRelativeMultipliers(groupRanking);
+                .sort((a, b) => b.multiplier - a.multiplier);
 
             const groupList = document.getElementById('groupRanking');
-            groupList.innerHTML = groupRankingWithMultipliers.map((item, idx) => {
-                const probabilityText = item.avgProbability !== null && item.avgProbability !== undefined
-                    ? Math.round(item.avgProbability * 100) + '%'
-                    : '-';
-                return `
+            groupList.innerHTML = groupRanking.map((item, idx) => `
                 <li class="ranking-item">
                     <span class="rank-number">${idx + 1}</span>
-                    <span class="tier-label">${item.tierLabel || getTierLabel(item.tier)}</span>
+                    <span class="tier-label">${getTierLabel(item.tier)}</span>
                     <span class="rank-name">${item.option}</span>
                     <span class="rank-score">
-                        <span class="rank-multiplier">${item.multiplierText || ''}</span>
+                        <span class="rank-multiplier">${formatMultiplier(item.multiplier)}</span>
                     </span>
-                    <span class="rank-probability">${probabilityText}</span>
                 </li>
-                `;
-            }).join('');
+            `).join('');
         }
 
         function exportData() {
