@@ -2712,6 +2712,9 @@
         }
 
         function formatMultiplier(mult) {
+            if (mult === null || mult === undefined) {
+                return '—';
+            }
             if (mult >= 1) {
                 return mult % 1 === 0 ? `${mult}x` : `${mult.toFixed(1)}x`;
             } else {
@@ -4766,6 +4769,7 @@
                 'E': '0.01x',
                 'F': '0.001x'
             };
+            if (!tierLetter) return '—';
             return tierMap[tierLetter] || tierLetter;
         }
 
@@ -4909,8 +4913,8 @@
         async function viewResults() {
             console.log('[RESULTS] viewResults() called, pollId:', pollId);
 
-            // Save current participant's data if they have tiers
-            if (currentParticipant && tiers && Object.keys(tiers).length > 0) {
+            // Save current participant's data
+            if (currentParticipant) {
                 await saveParticipantData();
             }
 
@@ -4944,14 +4948,17 @@
                 const isLive = p.name === '__live__';
 
                 // Get ranking - use stored ranking if available, or create from tiers/multipliers
-                const ranking = p.ranking || options.map((option, idx) => ({
-                    option,
-                    multiplier: p.customMultipliers && p.customMultipliers[idx] !== undefined
-                        ? p.customMultipliers[idx]
-                        : tierBaseMultipliers[p.tiers && p.tiers[idx] || 'C'],
-                    tier: p.tiers && p.tiers[idx] || 'C',
-                    probability: p.probabilities && p.probabilities[idx] !== undefined ? p.probabilities[idx] : 0.5
-                })).sort((a, b) => b.multiplier - a.multiplier);
+                const ranking = p.ranking || options.map((option, idx) => {
+                    const tier = p.tiers && p.tiers[idx];
+                    return {
+                        option,
+                        multiplier: p.customMultipliers && p.customMultipliers[idx] !== undefined
+                            ? p.customMultipliers[idx]
+                            : (tier ? tierBaseMultipliers[tier] : null),
+                        tier: tier || null,
+                        probability: p.probabilities && p.probabilities[idx] !== undefined ? p.probabilities[idx] : 0.5
+                    };
+                }).sort((a, b) => (b.multiplier || 0) - (a.multiplier || 0));
 
                 return `
                     <div class="section">
