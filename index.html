@@ -1861,7 +1861,8 @@
         const DATA_VERSION = 2; // Increment when breaking changes are made
 
         // Global state
-        let currentParticipant = '';
+        let currentParticipant = ''; // Session identifier (unique ID for survey, participant name for live)
+        let displayName = ''; // Human-readable name shown in results
         let options = [];
         let comparisons = [];
         let drawnPairs = []; // Pairs that user marked as draws (equal)
@@ -1874,6 +1875,11 @@
         let currentTier = null;
         let customMultipliers = {}; // Maps option index to custom multiplier value (overrides tier default)
         let probabilities = {}; // Maps option index to probability (0.0 to 1.0)
+
+        // Generate unique session ID for survey mode
+        function generateSessionId() {
+            return 'session_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 9);
+        }
 
         // Data migration system
         function migrateData() {
@@ -1963,6 +1969,7 @@
                 currentParticipant = (participantParam && participantParam.trim())
                     ? participantParam.trim()
                     : '__live__';
+                displayName = currentParticipant; // In live mode, participant name is the display name
                 console.log('[DEBUG] Live mode enabled, session:', currentParticipant);
             }
 
@@ -1979,7 +1986,16 @@
                 // If participant name in URL (non-live), auto-start session
                 else if (participantParam && participantParam.trim()) {
                     console.log('[DEBUG] Participant found in URL, calling loadPollAndStartSession');
-                    currentParticipant = participantParam.trim();
+                    const participantName = participantParam.trim();
+                    displayName = participantName;
+                    // Generate unique session ID for survey mode isolation
+                    const sessionKey = `session_${pollId}_${participantName}`;
+                    let sessionId = localStorage.getItem(sessionKey);
+                    if (!sessionId) {
+                        sessionId = generateSessionId();
+                        localStorage.setItem(sessionKey, sessionId);
+                    }
+                    currentParticipant = sessionId;
                     console.log('[DEBUG] currentParticipant set to:', currentParticipant);
                     loadPollAndStartSession(pollId);
                 } else {
@@ -2143,6 +2159,7 @@
 
             // Set current participant to organizer name
             currentParticipant = organizerName;
+            displayName = organizerName;
             isOrganizer = true;
 
             // Update URL to include poll ID so PartyKit can connect
@@ -2216,6 +2233,7 @@
             // Start the live collaborative session
             isLiveMode = true;
             currentParticipant = '__live__';
+            displayName = '__live__';
             loadPollAndStartSession(pollId);
         }
 
@@ -2389,6 +2407,7 @@
 
             if (progressData && foundName) {
                 currentParticipant = foundName;
+                displayName = progressData.displayName || foundName; // Use saved display name if available
                 tiers = progressData.tiers || [];
                 manualTiers = progressData.manualTiers || {};
                 probabilities = progressData.probabilities || {};
@@ -2427,7 +2446,23 @@
                     alert('Please enter your name');
                     return;
                 }
-                currentParticipant = name;
+                displayName = name;
+
+                // For survey mode (not live), use unique session ID for isolation
+                // For live mode, use participant name so multiple people share the session
+                if (isLiveMode) {
+                    currentParticipant = name;
+                } else {
+                    // Check if this name already has a session ID for this poll
+                    const sessionKey = `session_${pollId}_${name}`;
+                    let sessionId = localStorage.getItem(sessionKey);
+                    if (!sessionId) {
+                        // Generate new unique session ID
+                        sessionId = generateSessionId();
+                        localStorage.setItem(sessionKey, sessionId);
+                    }
+                    currentParticipant = sessionId;
+                }
             }
 
             // Connect to PartyKit with room = pollId_participant (separate room per participant)
@@ -4375,6 +4410,7 @@
             const progressKey = `progress_${pollId}_${currentParticipant}`;
             const progressData = {
                 participant: currentParticipant,
+                displayName: displayName || currentParticipant, // Store display name for results
                 tiers: tiers,
                 manualTiers: manualTiers,
                 customMultipliers: customMultipliers,
@@ -4414,7 +4450,8 @@
             if (!pollData) return; // Poll not found
 
             const participantData = {
-                name: currentParticipant,
+                name: displayName || currentParticipant, // Use display name for results
+                sessionId: currentParticipant, // Unique session identifier
                 timestamp: new Date().toISOString(),
                 ranking: ranking,
                 tiers: tiers,
@@ -4423,8 +4460,14 @@
                 enabled: true
             };
 
-            // Remove existing submission from this participant and add updated one
-            pollData.participants = pollData.participants.filter(p => p.name !== currentParticipant);
+            // Remove existing submission from this session (use sessionId for unique identification)
+            pollData.participants = pollData.participants.filter(p => {
+                // Match by sessionId if available, otherwise fall back to name for old data
+                if (p.sessionId) {
+                    return p.sessionId !== currentParticipant;
+                }
+                return p.name !== currentParticipant;
+            });
             pollData.participants.push(participantData);
             await savePollData(pollId, pollData);
         }
@@ -4440,6 +4483,10 @@
                 manualTiers = progressData.manualTiers || {};
                 customMultipliers = progressData.customMultipliers || {};
                 probabilities = progressData.probabilities || {};
+                // Restore display name if available
+                if (progressData.displayName) {
+                    displayName = progressData.displayName;
+                }
                 return true;
             }
             return false;
@@ -5007,7 +5054,8 @@
             }
 
             // Load their data into the current session
-            currentParticipant = name;
+            displayName = name;
+            currentParticipant = participant.sessionId || name; // Use sessionId if available
 
             // Convert tiers object/array to proper format
             tiers = {};
