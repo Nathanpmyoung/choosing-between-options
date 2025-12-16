@@ -1089,17 +1089,27 @@
         <!-- Screen 3: Share Link (Organizer) -->
         <div id="shareLinkScreen" class="screen">
             <h1>Poll Created!</h1>
-            <p class="subtitle">Share this link with friends to get their rankings</p>
+            <p class="subtitle">Share these links to collect rankings</p>
+
             <div class="share-link-box">
-                <h3>Share this link:</h3>
+                <h3>📋 Survey Link <span style="font-weight: normal; color: #666;">(each person ranks independently)</span></h3>
                 <div class="share-link">
                     <input type="text" id="shareLinkInput" readonly />
                     <button onclick="copyShareLink()">Copy</button>
                 </div>
             </div>
+
+            <div class="share-link-box" style="border-color: #4caf50;">
+                <h3>🔴 Live Link <span style="font-weight: normal; color: #666;">(everyone sees same screen - for calls)</span></h3>
+                <div class="share-link">
+                    <input type="text" id="liveLinkInput" readonly />
+                    <button onclick="copyLiveLink()">Copy</button>
+                </div>
+            </div>
+
             <div class="button-group">
-                <button id="continueMyComparisons" onclick="continueMyComparisons()" style="display: none;">Continue My Comparisons</button>
                 <button onclick="startMyRanking()">Do My Own Ranking</button>
+                <button onclick="startLiveSession()">Start Live Session</button>
                 <button class="secondary" onclick="viewResults()">View Results</button>
                 <button class="secondary" onclick="startAsOrganizer()">Create New Poll</button>
             </div>
@@ -1444,11 +1454,12 @@
 
             partyConnection.onopen = () => {
                 console.log('PartyKit connected for room:', roomId);
-                // Identify this connection with participant name and admin status
+                // Identify this connection with participant name, admin status, and live mode
                 partyConnection.send(JSON.stringify({
                     type: 'identify',
                     participant: currentParticipant,
-                    isAdmin: isAdmin
+                    isAdmin: isAdmin,
+                    isLiveMode: isLiveMode
                 }));
                 // Request initial sync
                 partyConnection.send(JSON.stringify({ type: 'request_sync' }));
@@ -1801,6 +1812,7 @@
         let pollId = '';
         let isOrganizer = false;
         let isAdmin = false;
+        let isLiveMode = false; // Collaborative mode - everyone sees same state
         let tiers = {}; // Maps option index to tier (S, A, B, C, D, E, F)
         let manualTiers = {}; // Tracks which option tiers have been manually set (to prevent auto-reassignment)
         let currentTier = null;
@@ -1871,10 +1883,12 @@
             const params = new URLSearchParams(window.location.search);
             pollId = params.get('poll');
             const participantParam = params.get('participant');
+            const liveParam = params.get('live');
 
             console.log('[DEBUG] initFromURL called');
             console.log('[DEBUG] pollId:', pollId);
             console.log('[DEBUG] participantParam:', participantParam);
+            console.log('[DEBUG] liveParam:', liveParam);
 
             // Check for debug mode parameter
             if (params.get('debug') === 'true') {
@@ -1885,13 +1899,25 @@
                 console.log('Debug mode disabled.');
             }
 
+            // Check for live/collaborative mode
+            if (liveParam === 'true') {
+                isLiveMode = true;
+                currentParticipant = '__live__'; // Shared participant name for live mode
+                console.log('[DEBUG] Live mode enabled');
+            }
+
             if (pollId) {
                 // Check if user is admin for this poll
                 isAdmin = checkAdmin(pollId);
                 console.log('[DEBUG] isAdmin:', isAdmin);
 
+                // Live mode - skip name entry, go straight to tiers
+                if (isLiveMode) {
+                    console.log('[DEBUG] Live mode, loading poll and starting session');
+                    loadPollAndStartSession(pollId);
+                }
                 // If participant name in URL, auto-start session
-                if (participantParam && participantParam.trim()) {
+                else if (participantParam && participantParam.trim()) {
                     console.log('[DEBUG] Participant found in URL, calling loadPollAndStartSession');
                     currentParticipant = participantParam.trim();
                     console.log('[DEBUG] currentParticipant set to:', currentParticipant);
@@ -2074,18 +2100,15 @@
             // Initialize tiers - default all to C tier
             tiers = {};
             manualTiers = {};
+            customMultipliers = {};
             options.forEach((_, idx) => {
                 tiers[idx] = 'C';
             });
 
-            // Populate C tier with all items initially
+            // Populate C tier with all items initially with multiplier controls
             const cTierContainer = document.getElementById('tier-items-C');
             cTierContainer.innerHTML = options.map((option, idx) => {
-                return `
-                    <div class="draggable-item" draggable="true" data-option-idx="${idx}">
-                        ${option}
-                    </div>
-                `;
+                return createTierItemHTML(idx, option);
             }).join('');
 
             // Clear other tiers
@@ -2113,7 +2136,30 @@
             const input = document.getElementById('shareLinkInput');
             input.select();
             document.execCommand('copy');
-            alert('Link copied to clipboard!');
+            alert('Survey link copied to clipboard!');
+        }
+
+        function copyLiveLink() {
+            const input = document.getElementById('liveLinkInput');
+            input.select();
+            document.execCommand('copy');
+            alert('Live link copied to clipboard!');
+        }
+
+        function updateShareLinks() {
+            const baseUrl = `${window.location.origin}${window.location.pathname}`;
+            const surveyUrl = `${baseUrl}?poll=${pollId}`;
+            const liveUrl = `${baseUrl}?poll=${pollId}&live=true`;
+
+            document.getElementById('shareLinkInput').value = surveyUrl;
+            document.getElementById('liveLinkInput').value = liveUrl;
+        }
+
+        function startLiveSession() {
+            // Start the live collaborative session
+            isLiveMode = true;
+            currentParticipant = '__live__';
+            loadPollAndStartSession(pollId);
         }
 
         function startMyRanking() {
@@ -2536,8 +2582,18 @@
                 tier: tiers[idx] || 'C'
             })).sort((a, b) => b.multiplier - a.multiplier);
 
-            // Show thank you / results
-            showThankYou(ranking);
+            // Show appropriate screen based on user type
+            if (isOrganizer) {
+                // Organizer sees share link screen
+                updateShareLinks();
+                showScreen('shareLinkScreen');
+            } else if (isLiveMode) {
+                // Live mode - just show thank you with option to go to results
+                showThankYou(ranking);
+            } else {
+                // Regular participant - show thank you
+                showThankYou(ranking);
+            }
         }
 
         function populateTiersFromState() {
@@ -2785,8 +2841,7 @@
         function finishRanking() {
             saveProgress();
             if (isOrganizer) {
-                const shareUrl = `${window.location.origin}${window.location.pathname}?poll=${pollId}`;
-                document.getElementById('shareLinkInput').value = shareUrl;
+                updateShareLinks();
                 showScreen('shareLinkScreen');
             } else {
                 saveParticipantData();
@@ -4748,9 +4803,8 @@
                 return;
             }
 
-            // Set up the share link
-            const shareUrl = `${window.location.origin}${window.location.pathname}?poll=${pollId}`;
-            document.getElementById('shareLinkInput').value = shareUrl;
+            // Set up the share links
+            updateShareLinks();
 
             // Show the share link screen
             showScreen('shareLinkScreen');

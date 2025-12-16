@@ -1,20 +1,16 @@
 /**
  * PartyKit Server for Real-time Ranking Collaboration
  *
- * Syncs state between multiple users working on the same ranking session:
- * - Options list
- * - Tier assignments
- * - Comparisons made
- * - Bradley-Terry prices
- * - Bounds (lowerBounds, upperBounds)
- * - Participant data
+ * Two modes:
+ * 1. Survey mode: Each participant has their own state
+ * 2. Live mode (?live=true): Everyone shares the same state
  */
 
 export default class RankingServer {
   constructor(party) {
     this.party = party;
     // Track participant info per connection
-    this.connectionInfo = new Map(); // connectionId -> { participant, isAdmin }
+    this.connectionInfo = new Map(); // connectionId -> { participant, isAdmin, isLiveMode }
   }
 
   async onConnect(connection, ctx) {
@@ -37,17 +33,18 @@ export default class RankingServer {
         // Store participant info for this connection
         this.connectionInfo.set(connection.id, {
           participant: data.participant,
-          isAdmin: data.isAdmin
+          isAdmin: data.isAdmin,
+          isLiveMode: data.isLiveMode
         });
-        console.log('[SERVER] Connection identified:', connection.id, data.participant, 'isAdmin:', data.isAdmin);
+        console.log('[SERVER] Connection identified:', connection.id, data.participant, 'isAdmin:', data.isAdmin, 'isLiveMode:', data.isLiveMode);
 
-        // Send participant-specific state
-        const participantStateKey = `state_${data.participant}`;
-        const participantState = await this.party.storage.get(participantStateKey);
-        if (participantState) {
+        // Send state - use shared key for live mode, participant-specific otherwise
+        const stateKey = data.isLiveMode ? 'state___live__' : `state_${data.participant}`;
+        const savedState = await this.party.storage.get(stateKey);
+        if (savedState) {
           connection.send(JSON.stringify({
             type: "sync",
-            state: participantState
+            state: savedState
           }));
         }
         break;
@@ -97,7 +94,8 @@ export default class RankingServer {
         // Handle tier assignment changes
         const senderInfo3 = this.connectionInfo.get(connection.id);
         if (senderInfo3 && senderInfo3.participant) {
-          const stateKey = `state_${senderInfo3.participant}`;
+          // Use shared key for live mode
+          const stateKey = senderInfo3.isLiveMode ? 'state___live__' : `state_${senderInfo3.participant}`;
           const state = await this.party.storage.get(stateKey) || {};
           state.tiers = data.tiers;
           state.manualTiers = data.manualTiers;
@@ -106,13 +104,24 @@ export default class RankingServer {
           await this.party.storage.put(stateKey, state);
         }
 
-        this.broadcastToParticipant(JSON.stringify({
-          type: "tier_updated",
-          tiers: data.tiers,
-          manualTiers: data.manualTiers,
-          customMultipliers: data.customMultipliers,
-          updatedBy: connection.id
-        }), connection);
+        // In live mode, broadcast to ALL live connections; otherwise just same participant
+        if (senderInfo3 && senderInfo3.isLiveMode) {
+          this.broadcastToLive(JSON.stringify({
+            type: "tier_updated",
+            tiers: data.tiers,
+            manualTiers: data.manualTiers,
+            customMultipliers: data.customMultipliers,
+            updatedBy: connection.id
+          }), connection);
+        } else {
+          this.broadcastToParticipant(JSON.stringify({
+            type: "tier_updated",
+            tiers: data.tiers,
+            manualTiers: data.manualTiers,
+            customMultipliers: data.customMultipliers,
+            updatedBy: connection.id
+          }), connection);
+        }
         break;
 
       case "screen_changed":
@@ -144,7 +153,8 @@ export default class RankingServer {
         // Client requesting full state sync
         const senderInfo4 = this.connectionInfo.get(connection.id);
         if (senderInfo4 && senderInfo4.participant) {
-          const stateKey = `state_${senderInfo4.participant}`;
+          // Use shared key for live mode
+          const stateKey = senderInfo4.isLiveMode ? 'state___live__' : `state_${senderInfo4.participant}`;
           const fullState = await this.party.storage.get(stateKey);
           if (fullState) {
             connection.send(JSON.stringify({
@@ -200,6 +210,26 @@ export default class RankingServer {
       // Send to connections with same participant name
       if (connInfo && connInfo.participant === senderParticipant) {
         console.log('[SERVER] Sending to same-participant connection:', conn.id);
+        conn.send(message);
+      }
+    }
+  }
+
+  // Helper method to broadcast to ALL live mode connections
+  broadcastToLive(message, senderConnection, excludeSender = true) {
+    console.log('[SERVER] Broadcasting to all live connections');
+
+    for (const conn of this.party.getConnections()) {
+      // Skip sender if excludeSender is true
+      if (excludeSender && conn.id === senderConnection.id) {
+        continue;
+      }
+
+      const connInfo = this.connectionInfo.get(conn.id);
+
+      // Send to all live mode connections
+      if (connInfo && connInfo.isLiveMode) {
+        console.log('[SERVER] Sending to live connection:', conn.id);
         conn.send(message);
       }
     }
