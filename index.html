@@ -2342,24 +2342,18 @@
                 populateTiersWithConfidence();
                 showScreen('tierScreen');
             } else {
-                // Start fresh ranking session - initialize and go to tier screen
+                // Start fresh ranking session - all items start unassigned
                 comparisons = [];
                 drawnPairs = [];
                 tiers = {};
                 lowerBounds = {};
                 upperBounds = {};
+                manualTiers = {};
+                customMultipliers = {};
 
-                // Initialize all options with default tier C
-                options.forEach((_, idx) => {
-                    tiers[idx] = 'C';
-                    lowerBounds[idx] = 3; // log10(1000) = 3
-                    upperBounds[idx] = 3;
-                });
-
-                // Save initial state so participant appears in the list immediately
-                saveProgress();
-
-                populateTiersWithConfidence();
+                // Don't save yet - let user make assignments first
+                // Show tier screen with items in unassigned
+                populateTiersFromState();
                 showScreen('tierScreen');
             }
         }
