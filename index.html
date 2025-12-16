@@ -2137,42 +2137,21 @@
             // Connect to PartyKit
             connectToPartyKit(pollId);
 
-            // Initialize tiers with some pre-set values for faster testing
+            // Initialize - all items start unassigned
             tiers = {};
             manualTiers = {};
             customMultipliers = {};
 
-            // Pre-assign some tiers to speed up testing
-            // S tier (1000x) - catastrophic
-            tiers[0] = 'S';  // Mass extinction
-            tiers[1] = 'S';  // Major war
-
-            // A tier (100x) - severe
-            tiers[2] = 'A';  // Pandemic
-            tiers[3] = 'A';  // Recession
-
-            // B tier (10x) - significant
-            tiers[4] = 'B';  // Natural disaster
-            tiers[5] = 'B';  // Car accident
-
-            // C tier (1x) - baseline
-            tiers[6] = 'C';  // Job loss
-            tiers[7] = 'C';  // Minor illness
-
-            // D tier (0.1x) - minor
-            tiers[8] = 'D';  // Stubbed toe
-            tiers[9] = 'D';  // Paper cut
-
-            // Populate tiers in UI
+            // Clear all tier containers
             ['S', 'A', 'B', 'C', 'D', 'E', 'F'].forEach(tier => {
                 document.getElementById(`tier-items-${tier}`).innerHTML = '';
             });
 
-            options.forEach((option, idx) => {
-                const tier = tiers[idx] || 'C';
-                const tierContainer = document.getElementById(`tier-items-${tier}`);
-                tierContainer.innerHTML += createTierItemHTML(idx, option);
-            });
+            // Populate unassigned area with all demo items
+            const unassignedContainer = document.getElementById('unassigned-items');
+            unassignedContainer.innerHTML = options.map((option, idx) => {
+                return createTierItemHTML(idx, option);
+            }).join('');
 
             // Setup drag and drop
             setupDragAndDrop();
