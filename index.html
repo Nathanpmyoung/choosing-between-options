@@ -495,8 +495,50 @@
             margin-left: 10px;
         }
 
-        .tier-selection {
+        .tier-layout {
+            display: flex;
+            gap: 20px;
             margin: 20px 0;
+        }
+
+        .unassigned-sidebar {
+            width: 200px;
+            min-width: 200px;
+            background: #e9ecef;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            max-height: 600px;
+        }
+
+        .unassigned-header {
+            background: #6c757d;
+            color: white;
+            padding: 12px 15px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+
+        .unassigned-items {
+            flex: 1;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+            min-height: 100px;
+        }
+
+        .unassigned-items .draggable-item {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .tier-selection {
+            flex: 1;
+            margin: 0;
         }
 
         .tier-row {
@@ -685,6 +727,12 @@
         }
 
         .tier-row.drag-over .tier-items {
+            background: #e8f4ff;
+            border: 2px dashed #667eea;
+            border-radius: 5px;
+        }
+
+        .unassigned-sidebar.drag-over .unassigned-items {
             background: #e8f4ff;
             border: 2px dashed #667eea;
             border-radius: 5px;
@@ -1133,35 +1181,41 @@
         <!-- Screen 5: Tier Selection -->
         <div id="tierScreen" class="screen">
             <h1>Assign Value Tiers</h1>
-            <p class="subtitle">Drag options into tiers (1000x is highest value, 0.001x is lowest)</p>
-            <div class="tier-selection" id="tierSelection">
-                <div class="tier-row" data-tier="S">
-                    <div class="tier-header tier-S">1000x</div>
-                    <div class="tier-items" id="tier-items-S"></div>
+            <p class="subtitle">Drag options from the left into tiers</p>
+            <div class="tier-layout">
+                <div class="unassigned-sidebar" data-tier="unassigned">
+                    <div class="unassigned-header">Unassigned</div>
+                    <div class="unassigned-items" id="unassigned-items"></div>
                 </div>
-                <div class="tier-row" data-tier="A">
-                    <div class="tier-header tier-A">100x</div>
-                    <div class="tier-items" id="tier-items-A"></div>
-                </div>
-                <div class="tier-row" data-tier="B">
-                    <div class="tier-header tier-B">10x</div>
-                    <div class="tier-items" id="tier-items-B"></div>
-                </div>
-                <div class="tier-row" data-tier="C">
-                    <div class="tier-header tier-C">1x</div>
-                    <div class="tier-items" id="tier-items-C"></div>
-                </div>
-                <div class="tier-row" data-tier="D">
-                    <div class="tier-header tier-D">0.1x</div>
-                    <div class="tier-items" id="tier-items-D"></div>
-                </div>
-                <div class="tier-row" data-tier="E">
-                    <div class="tier-header tier-E">0.01x</div>
-                    <div class="tier-items" id="tier-items-E"></div>
-                </div>
-                <div class="tier-row" data-tier="F">
-                    <div class="tier-header tier-F">0.001x</div>
-                    <div class="tier-items" id="tier-items-F"></div>
+                <div class="tier-selection" id="tierSelection">
+                    <div class="tier-row" data-tier="S">
+                        <div class="tier-header tier-S">1000x</div>
+                        <div class="tier-items" id="tier-items-S"></div>
+                    </div>
+                    <div class="tier-row" data-tier="A">
+                        <div class="tier-header tier-A">100x</div>
+                        <div class="tier-items" id="tier-items-A"></div>
+                    </div>
+                    <div class="tier-row" data-tier="B">
+                        <div class="tier-header tier-B">10x</div>
+                        <div class="tier-items" id="tier-items-B"></div>
+                    </div>
+                    <div class="tier-row" data-tier="C">
+                        <div class="tier-header tier-C">1x</div>
+                        <div class="tier-items" id="tier-items-C"></div>
+                    </div>
+                    <div class="tier-row" data-tier="D">
+                        <div class="tier-header tier-D">0.1x</div>
+                        <div class="tier-items" id="tier-items-D"></div>
+                    </div>
+                    <div class="tier-row" data-tier="E">
+                        <div class="tier-header tier-E">0.01x</div>
+                        <div class="tier-items" id="tier-items-E"></div>
+                    </div>
+                    <div class="tier-row" data-tier="F">
+                        <div class="tier-header tier-F">0.001x</div>
+                        <div class="tier-items" id="tier-items-F"></div>
+                    </div>
                 </div>
             </div>
             <div class="button-group">
@@ -2617,6 +2671,50 @@
                     }
                 });
             });
+
+            // Add drop zone event listeners for unassigned sidebar
+            const unassignedSidebar = document.querySelector('.unassigned-sidebar');
+            if (unassignedSidebar) {
+                unassignedSidebar.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    unassignedSidebar.classList.add('drag-over');
+                });
+
+                unassignedSidebar.addEventListener('dragleave', (e) => {
+                    unassignedSidebar.classList.remove('drag-over');
+                });
+
+                unassignedSidebar.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    unassignedSidebar.classList.remove('drag-over');
+
+                    if (draggedElement) {
+                        const optionIdx = parseInt(draggedElement.dataset.optionIdx);
+                        const unassignedItems = document.getElementById('unassigned-items');
+
+                        // Remove from tiers mapping (mark as unassigned)
+                        delete tiers[optionIdx];
+                        delete customMultipliers[optionIdx];
+
+                        // Sync change to PartyKit
+                        syncTierChangeToPartyKit();
+
+                        // Update the element
+                        const optionText = options[optionIdx];
+                        draggedElement.outerHTML = createTierItemHTML(optionIdx, optionText);
+
+                        // Re-get the element after replacing HTML
+                        const newElement = document.querySelector(`[data-option-idx="${optionIdx}"]`);
+                        unassignedItems.appendChild(newElement);
+
+                        // Re-setup drag events
+                        setupDragEventsForItem(newElement);
+
+                        // Save progress
+                        saveProgress();
+                    }
+                });
+            }
         }
 
         function goBackToName() {
@@ -2736,6 +2834,13 @@
         }
 
         function finishTierAssignment() {
+            // Check if there are any unassigned items
+            const unassignedCount = options.filter((_, idx) => !tiers[idx]).length;
+            if (unassignedCount > 0) {
+                alert(`Please assign all items to tiers. ${unassignedCount} item(s) still unassigned.`);
+                return;
+            }
+
             // Save final state
             saveProgress();
 
@@ -2744,16 +2849,23 @@
         }
 
         function populateTiersFromState() {
-            // Clear all tier containers
+            // Clear all tier containers including unassigned
             ['S', 'A', 'B', 'C', 'D', 'E', 'F'].forEach(tier => {
                 document.getElementById(`tier-items-${tier}`).innerHTML = '';
             });
+            document.getElementById('unassigned-items').innerHTML = '';
 
-            // Populate tiers based on saved state
+            // Populate tiers based on saved state (unassigned items go to unassigned area)
             options.forEach((option, idx) => {
-                const tier = tiers[idx] || 'C';
-                const tierContainer = document.getElementById(`tier-items-${tier}`);
-                tierContainer.innerHTML += createTierItemHTML(idx, option);
+                const tier = tiers[idx];
+                if (tier && tier !== 'unassigned') {
+                    const tierContainer = document.getElementById(`tier-items-${tier}`);
+                    tierContainer.innerHTML += createTierItemHTML(idx, option);
+                } else {
+                    // No tier assigned - put in unassigned area
+                    const unassignedContainer = document.getElementById('unassigned-items');
+                    unassignedContainer.innerHTML += createTierItemHTML(idx, option);
+                }
             });
 
             // Setup drag and drop for all items
