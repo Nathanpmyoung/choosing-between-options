@@ -2180,14 +2180,17 @@
             // Show admin link
             document.getElementById('adminViewResultsFromTier').style.display = 'block';
 
+            // Save demo progress so it persists through name entry
+            saveProgress();
+
             // Go to appropriate screen
             if (isLive) {
                 // Live mode goes straight to tiers
                 showScreen('tierScreen');
             } else {
                 // Survey mode shows name entry first
-                document.getElementById('participantScreen').querySelector('h1').textContent = 'Demo Mode';
-                showScreen('participantScreen');
+                document.getElementById('nameScreen').querySelector('h1').textContent = 'Demo Mode';
+                showScreen('nameScreen');
             }
 
             console.log('[DEMO] Demo loaded with poll:', pollId);
@@ -2280,24 +2283,21 @@
             comparisons = [];
             drawnPairs = [];
 
-            // Initialize tiers - default all to C tier
+            // Initialize tiers - start all unassigned
             tiers = {};
             manualTiers = {};
             customMultipliers = {};
-            options.forEach((_, idx) => {
-                tiers[idx] = 'C';
-            });
 
-            // Populate C tier with all items initially with multiplier controls
-            const cTierContainer = document.getElementById('tier-items-C');
-            cTierContainer.innerHTML = options.map((option, idx) => {
-                return createTierItemHTML(idx, option);
-            }).join('');
-
-            // Clear other tiers
-            ['S', 'A', 'B', 'D', 'E', 'F'].forEach(tier => {
+            // Clear all tier containers
+            ['S', 'A', 'B', 'C', 'D', 'E', 'F'].forEach(tier => {
                 document.getElementById(`tier-items-${tier}`).innerHTML = '';
             });
+
+            // Populate unassigned area with all items
+            const unassignedContainer = document.getElementById('unassigned-items');
+            unassignedContainer.innerHTML = options.map((option, idx) => {
+                return createTierItemHTML(idx, option);
+            }).join('');
 
             // Setup drag and drop
             setupDragAndDrop();
@@ -2576,24 +2576,21 @@
             comparisons = [];
             drawnPairs = [];
 
-            // Initialize tiers - default all to C tier
+            // Initialize tiers - start all unassigned
             tiers = {};
             manualTiers = {};
             customMultipliers = {};
-            options.forEach((_, idx) => {
-                tiers[idx] = 'C';
-            });
 
-            // Populate C tier with all items initially with multiplier controls
-            const cTierContainer = document.getElementById('tier-items-C');
-            cTierContainer.innerHTML = options.map((option, idx) => {
-                return createTierItemHTML(idx, option);
-            }).join('');
-
-            // Clear other tiers
-            ['S', 'A', 'B', 'D', 'E', 'F'].forEach(tier => {
+            // Clear all tier containers
+            ['S', 'A', 'B', 'C', 'D', 'E', 'F'].forEach(tier => {
                 document.getElementById(`tier-items-${tier}`).innerHTML = '';
             });
+
+            // Populate unassigned area with all items
+            const unassignedContainer = document.getElementById('unassigned-items');
+            unassignedContainer.innerHTML = options.map((option, idx) => {
+                return createTierItemHTML(idx, option);
+            }).join('');
 
             // Setup drag and drop
             setupDragAndDrop();
