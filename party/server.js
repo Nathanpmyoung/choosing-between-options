@@ -191,14 +191,7 @@ export default class RankingServer {
 
       const connInfo = this.connectionInfo.get(conn.id);
 
-      // Send to admins (they observe everything)
-      if (connInfo && connInfo.isAdmin) {
-        console.log('[SERVER] Sending to admin connection:', conn.id);
-        conn.send(message);
-        continue;
-      }
-
-      // Send to connections with same participant name
+      // Send only to connections with same participant name (including admins)
       if (connInfo && connInfo.participant === senderParticipant) {
         console.log('[SERVER] Sending to same-participant connection:', conn.id);
         conn.send(message);
