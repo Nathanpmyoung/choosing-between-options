@@ -1940,19 +1940,6 @@
             pollId = params.get('poll');
             const participantParam = params.get('participant');
             const liveParam = params.get('live');
-            let demoParam = params.get('demo');
-
-            // Auto-enable demo mode on Vercel preview deployments
-            // Preview URLs look like: project-hash-scope.vercel.app
-            // Production URL looks like: choosing-between-options.vercel.app
-            const hostname = window.location.hostname;
-            const isVercelPreview = hostname.endsWith('.vercel.app') &&
-                                    hostname !== 'choosing-between-options.vercel.app' &&
-                                    !hostname.startsWith('choosing-between-options.');
-            if (isVercelPreview && demoParam === null) {
-                demoParam = 'true';
-                console.log('[DEBUG] Vercel preview detected, auto-enabling demo mode');
-            }
 
             console.log('[DEBUG] initFromURL called');
             console.log('[DEBUG] pollId:', pollId);
@@ -1966,12 +1953,6 @@
             } else if (params.get('debug') === 'false') {
                 localStorage.setItem('debugMode', 'false');
                 console.log('Debug mode disabled.');
-            }
-
-            // Check for demo mode - load test data
-            if (demoParam === 'true') {
-                loadDemoData(liveParam === 'true');
-                return;
             }
 
             // Check for live/collaborative mode
@@ -2083,96 +2064,6 @@
         function loadPollFromList(selectedPollId) {
             // Navigate to the poll URL
             window.location.href = `${window.location.pathname}?poll=${selectedPollId}`;
-        }
-
-        async function loadDemoData(isLive = false) {
-            console.log('[DEMO] Loading demo data, isLive:', isLive);
-
-            // Demo options - a mix of items at different scales
-            const demoOptions = [
-                'Mass extinction event',
-                'Major war',
-                'Global pandemic',
-                'Economic recession',
-                'Local natural disaster',
-                'Car accident',
-                'Job loss',
-                'Minor illness',
-                'Stubbed toe',
-                'Paper cut'
-            ];
-
-            // Create a demo poll
-            pollId = 'demo_' + Date.now().toString(36);
-            options = demoOptions;
-
-            // Save demo poll
-            const pollData = {
-                id: pollId,
-                options: options,
-                created: new Date().toISOString(),
-                participants: []
-            };
-            await savePollData(pollId, pollData);
-
-            // Mark as admin so we can see results
-            markAsAdmin(pollId);
-            isAdmin = true;
-            isOrganizer = true;
-
-            // Set up for live or survey mode
-            if (isLive) {
-                isLiveMode = true;
-                currentParticipant = '__live__';
-            }
-            // For survey mode, let user enter their name
-
-            // Update URL to include poll ID
-            const newUrl = new URL(window.location);
-            newUrl.searchParams.delete('demo');
-            newUrl.searchParams.set('poll', pollId);
-            if (isLive) newUrl.searchParams.set('live', 'true');
-            window.history.replaceState({}, '', newUrl);
-
-            // Connect to PartyKit
-            connectToPartyKit(pollId);
-
-            // Initialize - all items start unassigned
-            tiers = {};
-            manualTiers = {};
-            customMultipliers = {};
-
-            // Clear all tier containers
-            ['S', 'A', 'B', 'C', 'D', 'E', 'F'].forEach(tier => {
-                document.getElementById(`tier-items-${tier}`).innerHTML = '';
-            });
-
-            // Populate unassigned area with all demo items
-            const unassignedContainer = document.getElementById('unassigned-items');
-            unassignedContainer.innerHTML = options.map((option, idx) => {
-                return createTierItemHTML(idx, option);
-            }).join('');
-
-            // Setup drag and drop
-            setupDragAndDrop();
-
-            // Show admin link
-            document.getElementById('adminViewResultsFromTier').style.display = 'block';
-
-            // Save demo progress so it persists through name entry
-            saveProgress();
-
-            // Go to appropriate screen
-            if (isLive) {
-                // Live mode goes straight to tiers
-                showScreen('tierScreen');
-            } else {
-                // Survey mode shows name entry first
-                document.getElementById('nameScreen').querySelector('h1').textContent = 'Demo Mode';
-                showScreen('nameScreen');
-            }
-
-            console.log('[DEMO] Demo loaded with poll:', pollId);
         }
 
         function checkAdmin(pollId) {
